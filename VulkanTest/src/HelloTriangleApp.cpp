@@ -12,6 +12,7 @@
 #include "VulkanUtils.h"
 #include "QueueFamilyIndices.h"
 #include "SwapChainSupportDetails.h"
+#include "FileUtils.h"
 
 HelloTriangleApp::~HelloTriangleApp()
 {
@@ -42,6 +43,7 @@ void HelloTriangleApp::InitVulkan()
     CreateLogicalDevice();
     CreateSwapChain();
     CreateImageViews();
+    CreateGraphicsPipeline();
 }
 
 void HelloTriangleApp::MainLoop()
@@ -264,6 +266,26 @@ void HelloTriangleApp::CreateImageViews()
     }
 }
 
+void HelloTriangleApp::CreateGraphicsPipeline()
+{
+    auto vertShaderModule = CreateShaderModule(FileUtils::ReadFile("assets/shaders/compiled/TriangleTest.vert.spv"));
+    auto fragShaderModule = CreateShaderModule(FileUtils::ReadFile("assets/shaders/compiled/TriangleTest.frag.spv"));
+
+    std::array<VkPipelineShaderStageCreateInfo, 2> shaderStageInfos{};
+    shaderStageInfos[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    shaderStageInfos[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+    shaderStageInfos[0].module = vertShaderModule;
+    shaderStageInfos[0].pName = "main";
+
+    shaderStageInfos[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    shaderStageInfos[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    shaderStageInfos[1].module = fragShaderModule;
+    shaderStageInfos[1].pName = "main";
+
+    vkDestroyShaderModule(mDevice, vertShaderModule, nullptr);
+    vkDestroyShaderModule(mDevice, fragShaderModule, nullptr);
+}
+
 bool HelloTriangleApp::CheckValidationLayerSupport() const
 {
     auto availableLayers = vk::utils::GetInstanceLayerProps();
@@ -380,6 +402,20 @@ VkExtent2D HelloTriangleApp::ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& ca
         std::clamp((uint32_t)width, caps.minImageExtent.width, caps.maxImageExtent.width),
         std::clamp((uint32_t)height, caps.minImageExtent.height, caps.maxImageExtent.height)
     };
+}
+
+VkShaderModule HelloTriangleApp::CreateShaderModule(const std::vector<char>& code)
+{
+    VkShaderModuleCreateInfo createInfo{};
+    createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    createInfo.pCode = (const uint32_t*)std::data(code);
+    createInfo.codeSize = std::size(code);
+
+    VkShaderModule shaderModule{};
+    if (const auto result = vkCreateShaderModule(mDevice, &createInfo, nullptr, &shaderModule); result != VK_SUCCESS)
+        throw std::runtime_error("Failed to create shader module");
+
+    return shaderModule;
 }
 
 VkDebugUtilsMessengerCreateInfoEXT HelloTriangleApp::CreateDebugMessengerCreateInfo() const

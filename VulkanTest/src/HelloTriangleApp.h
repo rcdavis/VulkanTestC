@@ -34,6 +34,7 @@ private:
     void CreateLogicalDevice();
     void CreateSwapChain();
     void CreateImageViews();
+    void CreateGraphicsPipeline();
 
     bool CheckValidationLayerSupport() const;
     std::vector<const char*> GetRequiredExtensions() const;
@@ -43,6 +44,7 @@ private:
     VkSurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats) const;
     VkPresentModeKHR ChooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes) const;
     VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& caps) const;
+    VkShaderModule CreateShaderModule(const std::vector<char>& code);
 
     VkDebugUtilsMessengerCreateInfoEXT CreateDebugMessengerCreateInfo() const;
 
