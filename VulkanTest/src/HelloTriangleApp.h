@@ -66,6 +66,8 @@ private:
     VkFormat mSwapChainImageFormat{};
     VkExtent2D mSwapChainExtent{};
 
+    VkPipelineLayout mPipelineLayout{};
+
     VkDebugUtilsMessengerEXT mDebugMessenger{};
 
     static constexpr uint32_t WindowWidth = 800;
