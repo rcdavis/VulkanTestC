@@ -41,6 +41,7 @@ void HelloTriangleApp::InitVulkan()
     PickPhysicalDevice();
     CreateLogicalDevice();
     CreateSwapChain();
+    CreateImageViews();
 }
 
 void HelloTriangleApp::MainLoop()
@@ -54,15 +55,26 @@ void HelloTriangleApp::MainLoop()
 void HelloTriangleApp::Cleanup()
 {
     if constexpr (enableValidationLayers)
+    {
         vk::ext::DestroyDebugUtilsMessenger(mInstance, mDebugMessenger);
+        mDebugMessenger = VK_NULL_HANDLE;
+    }
+
+    for (auto imageView : mSwapChainImageViews)
+        vkDestroyImageView(mDevice, imageView, nullptr);
+    mSwapChainImageViews.clear();
 
     vkDestroySwapchainKHR(mDevice, mSwapChain, nullptr);
+    mSwapChain = VK_NULL_HANDLE;
 
     vkDestroyDevice(mDevice, nullptr);
+    mDevice = VK_NULL_HANDLE;
 
     vkDestroySurfaceKHR(mInstance, mSurface, nullptr);
+    mSurface = VK_NULL_HANDLE;
 
     vkDestroyInstance(mInstance, nullptr);
+    mInstance = VK_NULL_HANDLE;
 
     glfwDestroyWindow(mWindow);
     mWindow = nullptr;
@@ -84,7 +96,7 @@ void HelloTriangleApp::CreateInstance()
     appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
     appInfo.pEngineName = "No Engine";
     appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-    appInfo.apiVersion = VK_API_VERSION_1_0;
+    appInfo.apiVersion = VK_API_VERSION_1_1;
 
     const auto extensions = GetRequiredExtensions();
 
@@ -224,6 +236,32 @@ void HelloTriangleApp::CreateSwapChain()
     mSwapChainImages = vk::utils::GetSwapChainImages(mDevice, mSwapChain);
     if (std::empty(mSwapChainImages))
         throw std::runtime_error("Failed to get swap chain images");
+}
+
+void HelloTriangleApp::CreateImageViews()
+{
+    mSwapChainImageViews.resize(std::size(mSwapChainImages));
+
+    for (int i = 0; i < std::size(mSwapChainImages); ++i)
+    {
+        VkImageViewCreateInfo createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        createInfo.image = mSwapChainImages[i];
+        createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        createInfo.format = mSwapChainImageFormat;
+        createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        createInfo.subresourceRange.baseMipLevel = 0;
+        createInfo.subresourceRange.levelCount = 1;
+        createInfo.subresourceRange.baseArrayLayer = 0;
+        createInfo.subresourceRange.layerCount = 1;
+
+        if (const auto result = vkCreateImageView(mDevice, &createInfo, nullptr, &mSwapChainImageViews[i]); result != VK_SUCCESS)
+            throw std::runtime_error("Failed to create an image view");
+    }
 }
 
 bool HelloTriangleApp::CheckValidationLayerSupport() const

@@ -33,6 +33,7 @@ private:
     void PickPhysicalDevice();
     void CreateLogicalDevice();
     void CreateSwapChain();
+    void CreateImageViews();
 
     bool CheckValidationLayerSupport() const;
     std::vector<const char*> GetRequiredExtensions() const;
@@ -59,6 +60,7 @@ private:
 
     VkSwapchainKHR mSwapChain{};
     std::vector<VkImage> mSwapChainImages;
+    std::vector<VkImageView> mSwapChainImageViews;
     VkFormat mSwapChainImageFormat{};
     VkExtent2D mSwapChainExtent{};
 
