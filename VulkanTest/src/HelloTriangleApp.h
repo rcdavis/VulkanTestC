@@ -29,7 +29,9 @@ private:
     void Cleanup();
 
     void CreateInstance();
+    void CreateSurface();
     void PickPhysicalDevice();
+    void CreateLogicalDevice();
 
     bool CheckValidationLayerSupport() const;
     std::vector<const char*> GetRequiredExtensions() const;
@@ -43,6 +45,12 @@ private:
     VkInstance mInstance{};
 
     VkPhysicalDevice mPhysicalDevice{};
+    VkDevice mDevice{};
+
+    VkSurfaceKHR mSurface{};
+
+    VkQueue mGraphicsQueue{};
+    VkQueue mPresentQueue{};
 
     VkDebugUtilsMessengerEXT mDebugMessenger{};
 
