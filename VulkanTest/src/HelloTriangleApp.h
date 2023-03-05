@@ -34,6 +34,7 @@ private:
     void CreateLogicalDevice();
     void CreateSwapChain();
     void CreateImageViews();
+    void CreateRenderPass();
     void CreateGraphicsPipeline();
 
     bool CheckValidationLayerSupport() const;
@@ -66,6 +67,7 @@ private:
     VkFormat mSwapChainImageFormat{};
     VkExtent2D mSwapChainExtent{};
 
+    VkRenderPass mRenderPass{};
     VkPipelineLayout mPipelineLayout{};
 
     VkDebugUtilsMessengerEXT mDebugMessenger{};

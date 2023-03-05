@@ -43,6 +43,7 @@ void HelloTriangleApp::InitVulkan()
     CreateLogicalDevice();
     CreateSwapChain();
     CreateImageViews();
+    CreateRenderPass();
     CreateGraphicsPipeline();
 }
 
@@ -58,6 +59,9 @@ void HelloTriangleApp::Cleanup()
 {
     vkDestroyPipelineLayout(mDevice, mPipelineLayout, nullptr);
     mPipelineLayout = VK_NULL_HANDLE;
+
+    vkDestroyRenderPass(mDevice, mRenderPass, nullptr);
+    mRenderPass = VK_NULL_HANDLE;
 
     for (auto imageView : mSwapChainImageViews)
         vkDestroyImageView(mDevice, imageView, nullptr);
@@ -267,6 +271,38 @@ void HelloTriangleApp::CreateImageViews()
         if (const auto result = vkCreateImageView(mDevice, &createInfo, nullptr, &mSwapChainImageViews[i]); result != VK_SUCCESS)
             throw std::runtime_error("Failed to create an image view");
     }
+}
+
+void HelloTriangleApp::CreateRenderPass()
+{
+    VkAttachmentDescription colorAttachment{};
+    colorAttachment.format = mSwapChainImageFormat;
+    colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+    colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+    VkAttachmentReference colorAttachmentRef{};
+    colorAttachmentRef.attachment = 0;
+    colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    VkSubpassDescription subpass{};
+    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subpass.pColorAttachments = &colorAttachmentRef;
+    subpass.colorAttachmentCount = 1;
+
+    VkRenderPassCreateInfo renderPassInfo{};
+    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    renderPassInfo.pAttachments = &colorAttachment;
+    renderPassInfo.attachmentCount = 1;
+    renderPassInfo.pSubpasses = &subpass;
+    renderPassInfo.subpassCount = 1;
+
+    if (vkCreateRenderPass(mDevice, &renderPassInfo, nullptr, &mRenderPass) != VK_SUCCESS)
+        throw std::runtime_error("Failed to create render pass");
 }
 
 void HelloTriangleApp::CreateGraphicsPipeline()
