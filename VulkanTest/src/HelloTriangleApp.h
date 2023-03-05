@@ -36,6 +36,7 @@ private:
     void CreateImageViews();
     void CreateRenderPass();
     void CreateGraphicsPipeline();
+    void CreateFramebuffers();
 
     bool CheckValidationLayerSupport() const;
     std::vector<const char*> GetRequiredExtensions() const;
@@ -64,6 +65,7 @@ private:
     VkSwapchainKHR mSwapChain{};
     std::vector<VkImage> mSwapChainImages;
     std::vector<VkImageView> mSwapChainImageViews;
+    std::vector<VkFramebuffer> mSwapChainFramebuffers;
     VkFormat mSwapChainImageFormat{};
     VkExtent2D mSwapChainExtent{};
 
