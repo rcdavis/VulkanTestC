@@ -57,6 +57,9 @@ void HelloTriangleApp::MainLoop()
 
 void HelloTriangleApp::Cleanup()
 {
+    vkDestroyPipeline(mDevice, mGraphicsPipeline, nullptr);
+    mGraphicsPipeline = VK_NULL_HANDLE;
+
     vkDestroyPipelineLayout(mDevice, mPipelineLayout, nullptr);
     mPipelineLayout = VK_NULL_HANDLE;
 
@@ -330,7 +333,7 @@ void HelloTriangleApp::CreateGraphicsPipeline()
     inputAssembly.primitiveRestartEnable = VK_FALSE;
 
     // Dynamic viewport and scissor
-    /*constexpr std::array<VkDynamicState, 2> dynamicStates = {
+    constexpr std::array<VkDynamicState, 2> dynamicStates = {
         VK_DYNAMIC_STATE_VIEWPORT,
         VK_DYNAMIC_STATE_SCISSOR
     };
@@ -338,7 +341,7 @@ void HelloTriangleApp::CreateGraphicsPipeline()
     VkPipelineDynamicStateCreateInfo dynamicState{};
     dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
     dynamicState.pDynamicStates = std::data(dynamicStates);
-    dynamicState.dynamicStateCount = (uint32_t)std::size(dynamicStates);*/
+    dynamicState.dynamicStateCount = (uint32_t)std::size(dynamicStates);
 
     // Static viewport and scissor
     VkViewport viewport{};
@@ -390,6 +393,24 @@ void HelloTriangleApp::CreateGraphicsPipeline()
 
     if (vkCreatePipelineLayout(mDevice, &pipelineLayoutInfo, nullptr, &mPipelineLayout) != VK_SUCCESS)
         throw std::runtime_error("Failed to create pipeline layout");
+
+    VkGraphicsPipelineCreateInfo pipelineInfo{};
+    pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    pipelineInfo.pStages = std::data(shaderStageInfos);
+    pipelineInfo.stageCount = (uint32_t)std::size(shaderStageInfos);
+    pipelineInfo.pVertexInputState = &vertInputInfo;
+    pipelineInfo.pInputAssemblyState = &inputAssembly;
+    pipelineInfo.pViewportState = &viewportState;
+    pipelineInfo.pRasterizationState = &rasterizer;
+    pipelineInfo.pMultisampleState = &multisampling;
+    pipelineInfo.pColorBlendState = &colorBlending;
+    pipelineInfo.pDynamicState = &dynamicState;
+    pipelineInfo.layout = mPipelineLayout;
+    pipelineInfo.renderPass = mRenderPass;
+    pipelineInfo.subpass = 0;
+
+    if (vkCreateGraphicsPipelines(mDevice, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &mGraphicsPipeline) != VK_SUCCESS)
+        throw std::runtime_error("Failed to create graphics pipeline");
 
     vkDestroyShaderModule(mDevice, vertShaderModule, nullptr);
     vkDestroyShaderModule(mDevice, fragShaderModule, nullptr);
