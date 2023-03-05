@@ -9,6 +9,7 @@
 
 #include "Log.h"
 #include "VulkanExts.h"
+#include "VulkanUtils.h"
 #include "QueueFamilyIndices.h"
 #include "SwapChainSupportDetails.h"
 
@@ -107,10 +108,7 @@ void HelloTriangleApp::CreateInstance()
     vk::ext::Init(mInstance);
 
 #ifdef LOGGING_ENABLED
-    uint32_t extCount = 0;
-    vkEnumerateInstanceExtensionProperties(nullptr, &extCount, nullptr);
-    std::vector<VkExtensionProperties> extensionProps(extCount);
-    vkEnumerateInstanceExtensionProperties(nullptr, &extCount, std::data(extensionProps));
+    auto extensionProps = vk::utils::GetInstanceExtProps(mInstance);
 
     LOG_INFO("Available Extensions:");
     for (const auto& e : extensionProps)
@@ -126,13 +124,9 @@ void HelloTriangleApp::CreateSurface()
 
 void HelloTriangleApp::PickPhysicalDevice()
 {
-    uint32_t deviceCount = 0;
-    vkEnumeratePhysicalDevices(mInstance, &deviceCount, nullptr);
-    if (deviceCount == 0)
+    auto devices = vk::utils::GetPhysicalDevices(mInstance);
+    if (std::empty(devices))
         throw std::runtime_error("Failed to find GPUs with Vulkan support");
-
-    std::vector<VkPhysicalDevice> devices(deviceCount);
-    vkEnumeratePhysicalDevices(mInstance, &deviceCount, std::data(devices));
 
     for (const auto& device : devices)
     {
@@ -227,18 +221,14 @@ void HelloTriangleApp::CreateSwapChain()
     if (const auto result = vkCreateSwapchainKHR(mDevice, &createInfo, nullptr, &mSwapChain); result != VK_SUCCESS)
         throw std::runtime_error("Failed to create swap chain");
 
-    uint32_t imageCount = 0;
-    vkGetSwapchainImagesKHR(mDevice, mSwapChain, &imageCount, nullptr);
-    mSwapChainImages.resize(imageCount);
-    vkGetSwapchainImagesKHR(mDevice, mSwapChain, &imageCount, std::data(mSwapChainImages));
+    mSwapChainImages = vk::utils::GetSwapChainImages(mDevice, mSwapChain);
+    if (std::empty(mSwapChainImages))
+        throw std::runtime_error("Failed to get swap chain images");
 }
 
 bool HelloTriangleApp::CheckValidationLayerSupport() const
 {
-    uint32_t layerCount = 0;
-    vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
-    std::vector<VkLayerProperties> availableLayers(layerCount);
-    vkEnumerateInstanceLayerProperties(&layerCount, std::data(availableLayers));
+    auto availableLayers = vk::utils::GetInstanceLayerProps();
 
     for (const char* layerName : validationLayers)
     {
@@ -309,12 +299,7 @@ bool HelloTriangleApp::IsDeviceSuitable(VkPhysicalDevice device) const
 
 bool HelloTriangleApp::CheckDeviceExtensionSupport(VkPhysicalDevice device) const
 {
-    uint32_t extCount = 0;
-    vkEnumerateDeviceExtensionProperties(device, nullptr, &extCount, nullptr);
-
-    std::vector<VkExtensionProperties> availableExtensions(extCount);
-    vkEnumerateDeviceExtensionProperties(device, nullptr, &extCount, std::data(availableExtensions));
-
+    auto availableExtensions = vk::utils::GetPhysicalDeviceExtProps(device);
     std::set<std::string> requiredExts(std::cbegin(deviceExtensions), std::cend(deviceExtensions));
     for (const auto& extension : availableExtensions)
         requiredExts.erase(extension.extensionName);
