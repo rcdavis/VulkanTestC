@@ -29,16 +29,20 @@ private:
     void Cleanup();
 
     void CreateInstance();
+    void PickPhysicalDevice();
 
     bool CheckValidationLayerSupport() const;
     std::vector<const char*> GetRequiredExtensions() const;
     void SetupDebugMessenger();
+    bool IsDeviceSuitable(VkPhysicalDevice device) const;
 
     VkDebugUtilsMessengerCreateInfoEXT CreateDebugMessengerCreateInfo() const;
 
 private:
     GLFWwindow* mWindow = nullptr;
     VkInstance mInstance{};
+
+    VkPhysicalDevice mPhysicalDevice{};
 
     VkDebugUtilsMessengerEXT mDebugMessenger{};
 
