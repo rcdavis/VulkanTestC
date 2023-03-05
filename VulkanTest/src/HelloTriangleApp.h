@@ -40,7 +40,7 @@ private:
     void CreateGraphicsPipeline();
     void CreateFramebuffers();
     void CreateCommandPool();
-    void CreateCommandBuffer();
+    void CreateCommandBuffers();
     void CreateSyncObjects();
 
     void RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
@@ -58,6 +58,8 @@ private:
     VkDebugUtilsMessengerCreateInfoEXT CreateDebugMessengerCreateInfo() const;
 
 private:
+    static constexpr uint32_t MaxFramesInFlight = 2;
+
     GLFWwindow* mWindow = nullptr;
     VkInstance mInstance{};
 
@@ -81,13 +83,17 @@ private:
     VkPipeline mGraphicsPipeline{};
 
     VkCommandPool mCommandPool{};
-    VkCommandBuffer mCommandBuffer{};
+    //VkCommandBuffer mCommandBuffer{};
+    //std::array<VkCommandBuffer, MaxFramesInFlight> commandBuffers{};
+    std::vector<VkCommandBuffer> mCommandBuffers;
 
-    VkSemaphore mImageAvailableSemaphore{};
-    VkSemaphore mRenderFinishedSemaphore{};
-    VkFence mInFlightFence{};
+    std::vector<VkSemaphore> mImageAvailableSemaphores;
+    std::vector<VkSemaphore> mRenderFinishedSemaphores;
+    std::vector<VkFence> mInFlightFences;
 
     VkDebugUtilsMessengerEXT mDebugMessenger{};
+
+    uint32_t mCurrentFrame = 0;
 
     static constexpr uint32_t WindowWidth = 800;
     static constexpr uint32_t WindowHeight = 600;
