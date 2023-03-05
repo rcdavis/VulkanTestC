@@ -6,6 +6,7 @@
 *.lo
 *.o
 *.obj
+*.spv
 
 # Precompiled Headers
 *.gch
@@ -24,9 +25,24 @@
 *.lai
 *.la
 *.a
-*.lib
 
 # Executables
 *.exe
 *.out
 *.app
+
+!Vendor/Premake/premake5.exe
+
+# VS files
+.vs/
+*.sln
+*.vcxproj
+*.vcxproj.user
+*.vcxproj.filters
+
+Build/
+
+*.log
+*.tlog
+
+JSON/
