@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <vector>
+#include <array>
 
 #include <vulkan/vulkan.h>
 
@@ -29,10 +30,28 @@ private:
 
     void CreateInstance();
 
+    bool CheckValidationLayerSupport() const;
+    std::vector<const char*> GetRequiredExtensions() const;
+    void SetupDebugMessenger();
+
+    VkDebugUtilsMessengerCreateInfoEXT CreateDebugMessengerCreateInfo() const;
+
 private:
     GLFWwindow* mWindow = nullptr;
-    VkInstance mInstance {};
+    VkInstance mInstance{};
+
+    VkDebugUtilsMessengerEXT mDebugMessenger{};
 
     static constexpr uint32_t WindowWidth = 800;
     static constexpr uint32_t WindowHeight = 600;
+
+    static constexpr std::array<const char*, 1> validationLayers = {
+        "VK_LAYER_KHRONOS_validation"
+    };
+
+#ifdef DEBUG
+    static constexpr bool enableValidationLayers = true;
+#else
+    static constexpr bool enableValidationLayers = false;
+#endif
 };
