@@ -32,11 +32,16 @@ private:
     void CreateSurface();
     void PickPhysicalDevice();
     void CreateLogicalDevice();
+    void CreateSwapChain();
 
     bool CheckValidationLayerSupport() const;
     std::vector<const char*> GetRequiredExtensions() const;
     void SetupDebugMessenger();
     bool IsDeviceSuitable(VkPhysicalDevice device) const;
+    bool CheckDeviceExtensionSupport(VkPhysicalDevice device) const;
+    VkSurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats) const;
+    VkPresentModeKHR ChooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes) const;
+    VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& caps) const;
 
     VkDebugUtilsMessengerCreateInfoEXT CreateDebugMessengerCreateInfo() const;
 
@@ -52,10 +57,19 @@ private:
     VkQueue mGraphicsQueue{};
     VkQueue mPresentQueue{};
 
+    VkSwapchainKHR mSwapChain{};
+    std::vector<VkImage> mSwapChainImages;
+    VkFormat mSwapChainImageFormat{};
+    VkExtent2D mSwapChainExtent{};
+
     VkDebugUtilsMessengerEXT mDebugMessenger{};
 
     static constexpr uint32_t WindowWidth = 800;
     static constexpr uint32_t WindowHeight = 600;
+
+    static constexpr std::array<const char*, 1> deviceExtensions = {
+        VK_KHR_SWAPCHAIN_EXTENSION_NAME
+    };
 
     static constexpr std::array<const char*, 1> validationLayers = {
         "VK_LAYER_KHRONOS_validation"

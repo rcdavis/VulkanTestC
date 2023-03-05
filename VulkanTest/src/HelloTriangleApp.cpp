@@ -5,10 +5,12 @@
 
 #include <stdexcept>
 #include <set>
+#include <string>
 
 #include "Log.h"
 #include "VulkanExts.h"
 #include "QueueFamilyIndices.h"
+#include "SwapChainSupportDetails.h"
 
 HelloTriangleApp::~HelloTriangleApp()
 {
@@ -37,6 +39,7 @@ void HelloTriangleApp::InitVulkan()
     CreateSurface();
     PickPhysicalDevice();
     CreateLogicalDevice();
+    CreateSwapChain();
 }
 
 void HelloTriangleApp::MainLoop()
@@ -51,6 +54,8 @@ void HelloTriangleApp::Cleanup()
 {
     if constexpr (enableValidationLayers)
         vk::ext::DestroyDebugUtilsMessenger(mInstance, mDebugMessenger);
+
+    vkDestroySwapchainKHR(mDevice, mSwapChain, nullptr);
 
     vkDestroyDevice(mDevice, nullptr);
 
@@ -168,6 +173,8 @@ void HelloTriangleApp::CreateLogicalDevice()
     createInfo.queueCreateInfoCount = (uint32_t)std::size(queueCreateInfos);
     createInfo.pEnabledFeatures = &deviceFeatures;
     createInfo.enabledExtensionCount = 0;
+    createInfo.ppEnabledExtensionNames = std::data(deviceExtensions);
+    createInfo.enabledExtensionCount = (uint32_t)std::size(deviceExtensions);
 
     if constexpr (enableValidationLayers)
     {
@@ -180,6 +187,50 @@ void HelloTriangleApp::CreateLogicalDevice()
 
     vkGetDeviceQueue(mDevice, indices.graphicsFamily.value(), 0, &mGraphicsQueue);
     vkGetDeviceQueue(mDevice, indices.presentFamily.value(), 0, &mPresentQueue);
+}
+
+void HelloTriangleApp::CreateSwapChain()
+{
+    auto swapChainSupport = SwapChainSupportDetails::Query(mPhysicalDevice, mSurface);
+    VkSurfaceFormatKHR surfaceFormat = ChooseSwapSurfaceFormat(swapChainSupport.formats);
+    VkPresentModeKHR presentMode = ChooseSwapPresentMode(swapChainSupport.presentModes);
+    mSwapChainExtent = ChooseSwapExtent(swapChainSupport.capabilities);
+
+    mSwapChainImageFormat = surfaceFormat.format;
+
+    VkSwapchainCreateInfoKHR createInfo{};
+    createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+    createInfo.surface = mSurface;
+    createInfo.minImageCount = swapChainSupport.GetImageCount();
+    createInfo.imageFormat = surfaceFormat.format;
+    createInfo.imageColorSpace = surfaceFormat.colorSpace;
+    createInfo.imageExtent = mSwapChainExtent;
+    createInfo.imageArrayLayers = 1;
+    createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    createInfo.preTransform = swapChainSupport.capabilities.currentTransform;
+    createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+    createInfo.presentMode = presentMode;
+    createInfo.clipped = VK_TRUE;
+
+    auto indices = QueueFamilyIndices::Find(mPhysicalDevice, mSurface);
+    const auto familyIndices = indices.GetIndices();
+
+    if (indices.graphicsFamily != indices.presentFamily)
+    {
+        createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+        createInfo.pQueueFamilyIndices = std::data(familyIndices);
+        createInfo.queueFamilyIndexCount = (uint32_t)std::size(familyIndices);
+    } else {
+        createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    }
+
+    if (const auto result = vkCreateSwapchainKHR(mDevice, &createInfo, nullptr, &mSwapChain); result != VK_SUCCESS)
+        throw std::runtime_error("Failed to create swap chain");
+
+    uint32_t imageCount = 0;
+    vkGetSwapchainImagesKHR(mDevice, mSwapChain, &imageCount, nullptr);
+    mSwapChainImages.resize(imageCount);
+    vkGetSwapchainImagesKHR(mDevice, mSwapChain, &imageCount, std::data(mSwapChainImages));
 }
 
 bool HelloTriangleApp::CheckValidationLayerSupport() const
@@ -244,7 +295,68 @@ bool HelloTriangleApp::IsDeviceSuitable(VkPhysicalDevice device) const
 
     QueueFamilyIndices indices = QueueFamilyIndices::Find(device, mSurface);
 
-    return indices.IsComplete();
+    const bool extensionsSupported = CheckDeviceExtensionSupport(device);
+
+    bool swapChainAdequate = false;
+    if (extensionsSupported)
+    {
+        auto swapChainSupport = SwapChainSupportDetails::Query(device, mSurface);
+        swapChainAdequate = !std::empty(swapChainSupport.formats) && !std::empty(swapChainSupport.presentModes);
+    }
+
+    return indices.IsComplete() && extensionsSupported && swapChainAdequate;
+}
+
+bool HelloTriangleApp::CheckDeviceExtensionSupport(VkPhysicalDevice device) const
+{
+    uint32_t extCount = 0;
+    vkEnumerateDeviceExtensionProperties(device, nullptr, &extCount, nullptr);
+
+    std::vector<VkExtensionProperties> availableExtensions(extCount);
+    vkEnumerateDeviceExtensionProperties(device, nullptr, &extCount, std::data(availableExtensions));
+
+    std::set<std::string> requiredExts(std::cbegin(deviceExtensions), std::cend(deviceExtensions));
+    for (const auto& extension : availableExtensions)
+        requiredExts.erase(extension.extensionName);
+
+    return std::empty(requiredExts);
+}
+
+VkSurfaceFormatKHR HelloTriangleApp::ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats) const
+{
+    for (const auto& availableFormat : availableFormats)
+    {
+        if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+            return availableFormat;
+    }
+
+    return availableFormats.front();
+}
+
+VkPresentModeKHR HelloTriangleApp::ChooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes) const
+{
+    for (const auto& presentMode : availablePresentModes)
+    {
+        if (presentMode == VK_PRESENT_MODE_MAILBOX_KHR)
+            return presentMode;
+    }
+
+    return VK_PRESENT_MODE_FIFO_KHR;
+}
+
+VkExtent2D HelloTriangleApp::ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& caps) const
+{
+    if (caps.currentExtent.width != std::numeric_limits<uint32_t>::max())
+        return caps.currentExtent;
+
+    int width = 0;
+    int height = 0;
+    glfwGetFramebufferSize(mWindow, &width, &height);
+
+    return {
+        std::clamp((uint32_t)width, caps.minImageExtent.width, caps.maxImageExtent.width),
+        std::clamp((uint32_t)height, caps.minImageExtent.height, caps.maxImageExtent.height)
+    };
 }
 
 VkDebugUtilsMessengerCreateInfoEXT HelloTriangleApp::CreateDebugMessengerCreateInfo() const

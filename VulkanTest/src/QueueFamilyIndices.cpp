@@ -7,6 +7,11 @@ bool QueueFamilyIndices::IsComplete() const
     return graphicsFamily.has_value() && presentFamily.has_value();
 }
 
+std::array<uint32_t, 2> QueueFamilyIndices::GetIndices() const
+{
+    return { graphicsFamily.value(), presentFamily.value() };
+}
+
 QueueFamilyIndices QueueFamilyIndices::Find(VkPhysicalDevice device, VkSurfaceKHR surface)
 {
     QueueFamilyIndices indices;
