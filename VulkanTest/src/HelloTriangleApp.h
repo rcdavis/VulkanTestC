@@ -1,6 +1,9 @@
 #pragma once
 
 #include <cstdint>
+#include <vector>
+
+#include <vulkan/vulkan.h>
 
 struct GLFWwindow;
 
@@ -15,7 +18,7 @@ public:
         InitWindow();
         InitVulkan();
         MainLoop();
-        Cleanup();
+        //Cleanup();
     }
 
 private:
@@ -24,8 +27,11 @@ private:
     void MainLoop();
     void Cleanup();
 
+    void CreateInstance();
+
 private:
     GLFWwindow* mWindow = nullptr;
+    VkInstance mInstance {};
 
     static constexpr uint32_t WindowWidth = 800;
     static constexpr uint32_t WindowHeight = 600;
