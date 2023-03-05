@@ -28,6 +28,8 @@ private:
     void MainLoop();
     void Cleanup();
 
+    void DrawFrame();
+
     void CreateInstance();
     void CreateSurface();
     void PickPhysicalDevice();
@@ -39,6 +41,7 @@ private:
     void CreateFramebuffers();
     void CreateCommandPool();
     void CreateCommandBuffer();
+    void CreateSyncObjects();
 
     void RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 
@@ -79,6 +82,10 @@ private:
 
     VkCommandPool mCommandPool{};
     VkCommandBuffer mCommandBuffer{};
+
+    VkSemaphore mImageAvailableSemaphore{};
+    VkSemaphore mRenderFinishedSemaphore{};
+    VkFence mInFlightFence{};
 
     VkDebugUtilsMessengerEXT mDebugMessenger{};
 
