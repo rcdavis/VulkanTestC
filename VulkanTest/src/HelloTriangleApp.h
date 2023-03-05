@@ -37,6 +37,10 @@ private:
     void CreateRenderPass();
     void CreateGraphicsPipeline();
     void CreateFramebuffers();
+    void CreateCommandPool();
+    void CreateCommandBuffer();
+
+    void RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 
     bool CheckValidationLayerSupport() const;
     std::vector<const char*> GetRequiredExtensions() const;
@@ -72,6 +76,9 @@ private:
     VkRenderPass mRenderPass{};
     VkPipelineLayout mPipelineLayout{};
     VkPipeline mGraphicsPipeline{};
+
+    VkCommandPool mCommandPool{};
+    VkCommandBuffer mCommandBuffer{};
 
     VkDebugUtilsMessengerEXT mDebugMessenger{};
 
