@@ -43,6 +43,7 @@ private:
     void CreateGraphicsPipeline();
     void CreateFramebuffers();
     void CreateCommandPool();
+    void CreateDepthResources();
     void CreateTextureImage();
     void CreateTextureImageView();
     void CreateTextureSampler();
@@ -71,6 +72,7 @@ private:
 
     VkDebugUtilsMessengerCreateInfoEXT CreateDebugMessengerCreateInfo() const;
     uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags props) const;
+    VkFormat FindSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) const;
     void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags props,
         VkBuffer& buffer, VkDeviceMemory& bufferMem);
     void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
@@ -80,10 +82,13 @@ private:
     void TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
     void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
 
-    VkImageView CreateImageView(VkImage image, VkFormat format);
+    VkImageView CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
 
     VkCommandBuffer BeginSingleTimeCommands();
     void EndSingleTimeCommands(VkCommandBuffer commandBuffer);
+
+    VkFormat FindDepthFormat() const;
+    bool HasStencilComponent(VkFormat format) const;
 
     static void FramebufferResizeCallback(GLFWwindow* window, int width, int height);
 
@@ -138,6 +143,10 @@ private:
     VkImageView mTexImageView{};
     VkSampler mTexSampler{};
 
+    VkImage mDepthImage{};
+    VkDeviceMemory mDepthImageMem{};
+    VkImageView mDepthImageView{};
+
     VkDebugUtilsMessengerEXT mDebugMessenger{};
 
     uint32_t mCurrentFrame = 0;
@@ -147,16 +156,21 @@ private:
     static constexpr uint32_t WindowWidth = 800;
     static constexpr uint32_t WindowHeight = 600;
 
-    static constexpr std::array<Vertex, 4> vertices = {
+    static constexpr std::array<Vertex, 8> vertices = {
         Vertex {{ -0.5f, -0.5f, 0.0f }, { 1.0f, 0.0f, 0.0f }, { 1.0f, 0.0f }},
         Vertex {{ 0.5f, -0.5f, 0.0f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f }},
         Vertex {{ 0.5f, 0.5f, 0.0f }, { 0.0f, 0.0f, 1.0f }, { 0.0f, 1.0f }},
-        Vertex {{ -0.5f, 0.5f, 0.0f }, { 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f }}
+        Vertex {{ -0.5f, 0.5f, 0.0f }, { 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f }},
+
+        Vertex {{ -0.5f, -0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f }, { 1.0f, 0.0f }},
+        Vertex {{ 0.5f, -0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f }},
+        Vertex {{ 0.5f, 0.5f, -0.5f }, { 0.0f, 0.0f, 1.0f }, { 0.0f, 1.0f }},
+        Vertex {{ -0.5f, 0.5f, -0.5f }, { 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f }}
     };
 
-    static constexpr std::array<uint16_t, 6> indices = {
-        0, 1, 2,
-        2, 3, 0
+    static constexpr std::array<uint16_t, 12> indices = {
+        0, 1, 2, 2, 3, 0,
+        4, 5, 6, 6, 7, 4
     };
 
     static constexpr std::array<const char*, 1> deviceExtensions = {
