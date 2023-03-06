@@ -18,8 +18,8 @@
 #include <string>
 
 #include "Log.h"
-#include "VulkanExts.h"
-#include "VulkanUtils.h"
+#include "Vulkan/VulkanExts.h"
+#include "Vulkan/VulkanUtils.h"
 #include "QueueFamilyIndices.h"
 #include "SwapChainSupportDetails.h"
 #include "FileUtils.h"
@@ -90,12 +90,7 @@ void HelloTriangleApp::Cleanup()
 
     vkDestroySampler(mDevice, mTexSampler, nullptr);
     mTexSampler = VK_NULL_HANDLE;
-    vkDestroyImageView(mDevice, mTexImageView, nullptr);
-    mTexImageView = VK_NULL_HANDLE;
-    vkDestroyImage(mDevice, mTexImage, nullptr);
-    mTexImage = VK_NULL_HANDLE;
-    vkFreeMemory(mDevice, mTexImageMem, nullptr);
-    mTexImageMem = VK_NULL_HANDLE;
+    mTexImage.Destroy();
 
     for (int i = 0; i < std::size(mUniformBuffers); ++i)
     {
@@ -549,7 +544,7 @@ void HelloTriangleApp::CreateFramebuffers()
     {
         const std::array<VkImageView, 2> attachments = {
             mSwapChainImageViews[i],
-            mDepthImageView
+            mDepthImage.mImageView
         };
 
         VkFramebufferCreateInfo framebufferInfo{};
@@ -581,15 +576,17 @@ void HelloTriangleApp::CreateCommandPool()
 
 void HelloTriangleApp::CreateDepthResources()
 {
+    mDepthImage.mDevice = mDevice;
     auto depthFormat = FindDepthFormat();
     CreateImage(mSwapChainExtent.width, mSwapChainExtent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, mDepthImage, mDepthImageMem);
-    mDepthImageView = CreateImageView(mDepthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, mDepthImage.mImage, mDepthImage.mImageMem);
+    mDepthImage.mImageView = CreateImageView(mDepthImage.mImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
 }
 
 void HelloTriangleApp::CreateTextureImage()
 {
     constexpr VkMemoryPropertyFlags props = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+    mTexImage.mDevice = mDevice;
 
     int texWidth = 0;
     int texHeight = 0;
@@ -613,11 +610,11 @@ void HelloTriangleApp::CreateTextureImage()
 
     constexpr VkImageUsageFlags imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
     CreateImage(texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
-        imageUsage, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, mTexImage, mTexImageMem);
+        imageUsage, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, mTexImage.mImage, mTexImage.mImageMem);
 
-    TransitionImageLayout(mTexImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-    CopyBufferToImage(stagingBuffer, mTexImage, (uint32_t)texWidth, (uint32_t)texHeight);
-    TransitionImageLayout(mTexImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    TransitionImageLayout(mTexImage.mImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    CopyBufferToImage(stagingBuffer, mTexImage.mImage, (uint32_t)texWidth, (uint32_t)texHeight);
+    TransitionImageLayout(mTexImage.mImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
     vkDestroyBuffer(mDevice, stagingBuffer, nullptr);
     vkFreeMemory(mDevice, stagingBufferMem, nullptr);
@@ -625,7 +622,7 @@ void HelloTriangleApp::CreateTextureImage()
 
 void HelloTriangleApp::CreateTextureImageView()
 {
-    mTexImageView = CreateImageView(mTexImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
+    mTexImage.mImageView = CreateImageView(mTexImage.mImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
 }
 
 void HelloTriangleApp::CreateTextureSampler()
@@ -754,7 +751,7 @@ void HelloTriangleApp::CreateDescriptorSets()
 
         VkDescriptorImageInfo imageInfo{};
         imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        imageInfo.imageView = mTexImageView;
+        imageInfo.imageView = mTexImage.mImageView;
         imageInfo.sampler = mTexSampler;
 
         std::array<VkWriteDescriptorSet, 2> descWrites{};
@@ -953,9 +950,7 @@ void HelloTriangleApp::RecreateSwapChain()
 
 void HelloTriangleApp::CleanupSwapChain()
 {
-    vkDestroyImageView(mDevice, mDepthImageView, nullptr);
-    vkDestroyImage(mDevice, mDepthImage, nullptr);
-    vkFreeMemory(mDevice, mDepthImageMem, nullptr);
+    mDepthImage.Destroy();
 
     for (auto& fb : mSwapChainFramebuffers)
         vkDestroyFramebuffer(mDevice, fb, nullptr);
@@ -1109,20 +1104,6 @@ VkDebugUtilsMessengerCreateInfoEXT HelloTriangleApp::CreateDebugMessengerCreateI
     return createInfo;
 }
 
-uint32_t HelloTriangleApp::FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags props) const
-{
-    VkPhysicalDeviceMemoryProperties memProps{};
-    vkGetPhysicalDeviceMemoryProperties(mPhysicalDevice, &memProps);
-
-    for (uint32_t i = 0; i < memProps.memoryTypeCount; ++i)
-    {
-        if ((typeFilter & (1 << i)) && (memProps.memoryTypes[i].propertyFlags & props) == props)
-            return i;
-    }
-
-    throw std::runtime_error("Failed to find suitable memory type");
-}
-
 VkFormat HelloTriangleApp::FindSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) const
 {
     for (VkFormat format : candidates)
@@ -1158,7 +1139,7 @@ void HelloTriangleApp::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
     VkMemoryAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     allocInfo.allocationSize = memReqs.size;
-    allocInfo.memoryTypeIndex = FindMemoryType(memReqs.memoryTypeBits, props);
+    allocInfo.memoryTypeIndex = vk::utils::FindMemoryType(mPhysicalDevice, memReqs.memoryTypeBits, props);
 
     if (vkAllocateMemory(mDevice, &allocInfo, nullptr, &bufferMem) != VK_SUCCESS)
         throw std::runtime_error("Failed to allocate buffer memory");
@@ -1221,7 +1202,7 @@ void HelloTriangleApp::CreateImage(uint32_t width, uint32_t height, VkFormat for
     VkMemoryAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     allocInfo.allocationSize = memReqs.size;
-    allocInfo.memoryTypeIndex = FindMemoryType(memReqs.memoryTypeBits, props);
+    allocInfo.memoryTypeIndex = vk::utils::FindMemoryType(mPhysicalDevice, memReqs.memoryTypeBits, props);
 
     if (vkAllocateMemory(mDevice, &allocInfo, nullptr, &imageMem) != VK_SUCCESS)
         throw std::runtime_error("Failed to allocate image memory");

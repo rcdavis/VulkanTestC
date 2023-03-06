@@ -8,6 +8,8 @@
 
 #include "Vertex.h"
 
+#include "Vulkan/VulkanImage.h"
+
 struct GLFWwindow;
 
 class HelloTriangleApp
@@ -71,7 +73,6 @@ private:
     VkShaderModule CreateShaderModule(const std::vector<char>& code);
 
     VkDebugUtilsMessengerCreateInfoEXT CreateDebugMessengerCreateInfo() const;
-    uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags props) const;
     VkFormat FindSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) const;
     void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags props,
         VkBuffer& buffer, VkDeviceMemory& bufferMem);
@@ -138,14 +139,10 @@ private:
     VkDescriptorPool mDescriptorPool{};
     std::vector<VkDescriptorSet> mDescriptorSets;
 
-    VkImage mTexImage{};
-    VkDeviceMemory mTexImageMem{};
-    VkImageView mTexImageView{};
+    VulkanImage mTexImage;
     VkSampler mTexSampler{};
 
-    VkImage mDepthImage{};
-    VkDeviceMemory mDepthImageMem{};
-    VkImageView mDepthImageView{};
+    VulkanImage mDepthImage;
 
     VkDebugUtilsMessengerEXT mDebugMessenger{};
 

@@ -1,5 +1,7 @@
 #include "VulkanUtils.h"
 
+#include <stdexcept>
+
 namespace vk::utils
 {
     std::vector<VkPhysicalDevice> GetPhysicalDevices(VkInstance instance)
@@ -65,5 +67,19 @@ namespace vk::utils
         vkGetSwapchainImagesKHR(device, swapChain, &imageCount, std::data(images));
 
         return images;
+    }
+
+    uint32_t FindMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags props)
+    {
+        VkPhysicalDeviceMemoryProperties memProps{};
+        vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProps);
+
+        for (uint32_t i = 0; i < memProps.memoryTypeCount; ++i)
+        {
+            if ((typeFilter & (1 << i)) && (memProps.memoryTypes[i].propertyFlags & props) == props)
+                return i;
+        }
+
+        throw std::runtime_error("Failed to find suitable memory type");
     }
 }

@@ -14,4 +14,6 @@ namespace vk::utils
     std::vector<VkLayerProperties> GetInstanceLayerProps();
 
     std::vector<VkImage> GetSwapChainImages(VkDevice device, VkSwapchainKHR swapChain);
+
+    uint32_t FindMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags props);
 }
