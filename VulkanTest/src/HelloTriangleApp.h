@@ -46,6 +46,8 @@ private:
     void CreateVertexBuffer();
     void CreateIndexBuffer();
     void CreateUniformBuffers();
+    void CreateDescriptorPool();
+    void CreateDescriptorSets();
     void CreateCommandBuffers();
     void CreateSyncObjects();
 
@@ -115,6 +117,9 @@ private:
     std::vector<VkBuffer> mUniformBuffers;
     std::vector<VkDeviceMemory> mUniformBuffersMem;
     std::vector<void*> mUniformBuffersMapped;
+
+    VkDescriptorPool mDescriptorPool{};
+    std::vector<VkDescriptorSet> mDescriptorSets;
 
     VkDebugUtilsMessengerEXT mDebugMessenger{};
 
