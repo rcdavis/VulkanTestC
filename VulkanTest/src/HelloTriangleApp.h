@@ -44,6 +44,8 @@ private:
     void CreateFramebuffers();
     void CreateCommandPool();
     void CreateTextureImage();
+    void CreateTextureImageView();
+    void CreateTextureSampler();
     void CreateVertexBuffer();
     void CreateIndexBuffer();
     void CreateUniformBuffers();
@@ -77,6 +79,8 @@ private:
         VkImageUsageFlags usage, VkMemoryPropertyFlags props, VkImage& image, VkDeviceMemory& imageMem);
     void TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
     void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
+
+    VkImageView CreateImageView(VkImage image, VkFormat format);
 
     VkCommandBuffer BeginSingleTimeCommands();
     void EndSingleTimeCommands(VkCommandBuffer commandBuffer);
@@ -131,6 +135,8 @@ private:
 
     VkImage mTexImage{};
     VkDeviceMemory mTexImageMem{};
+    VkImageView mTexImageView{};
+    VkSampler mTexSampler{};
 
     VkDebugUtilsMessengerEXT mDebugMessenger{};
 
