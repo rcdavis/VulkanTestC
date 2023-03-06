@@ -39,11 +39,13 @@ private:
     void CreateSwapChain();
     void CreateImageViews();
     void CreateRenderPass();
+    void CreateDescriptorSetLayout();
     void CreateGraphicsPipeline();
     void CreateFramebuffers();
     void CreateCommandPool();
     void CreateVertexBuffer();
     void CreateIndexBuffer();
+    void CreateUniformBuffers();
     void CreateCommandBuffers();
     void CreateSyncObjects();
 
@@ -67,6 +69,7 @@ private:
     void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags props,
         VkBuffer& buffer, VkDeviceMemory& bufferMem);
     void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+    void UpdateUniformBuffer(uint32_t curImage);
 
     static void FramebufferResizeCallback(GLFWwindow* window, int width, int height);
 
@@ -92,6 +95,7 @@ private:
     VkExtent2D mSwapChainExtent{};
 
     VkRenderPass mRenderPass{};
+    VkDescriptorSetLayout mDescriptorSetLayout{};
     VkPipelineLayout mPipelineLayout{};
     VkPipeline mGraphicsPipeline{};
 
@@ -107,6 +111,10 @@ private:
 
     VkBuffer mIndexBuffer{};
     VkDeviceMemory mIndexBufferMem{};
+
+    std::vector<VkBuffer> mUniformBuffers;
+    std::vector<VkDeviceMemory> mUniformBuffersMem;
+    std::vector<void*> mUniformBuffersMapped;
 
     VkDebugUtilsMessengerEXT mDebugMessenger{};
 
