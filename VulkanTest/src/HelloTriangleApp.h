@@ -43,6 +43,7 @@ private:
     void CreateFramebuffers();
     void CreateCommandPool();
     void CreateVertexBuffer();
+    void CreateIndexBuffer();
     void CreateCommandBuffers();
     void CreateSyncObjects();
 
@@ -104,6 +105,9 @@ private:
     VkBuffer mVertexBuffer{};
     VkDeviceMemory mVertexBufferMem{};
 
+    VkBuffer mIndexBuffer{};
+    VkDeviceMemory mIndexBufferMem{};
+
     VkDebugUtilsMessengerEXT mDebugMessenger{};
 
     uint32_t mCurrentFrame = 0;
@@ -113,10 +117,16 @@ private:
     static constexpr uint32_t WindowWidth = 800;
     static constexpr uint32_t WindowHeight = 600;
 
-    static constexpr std::array<Vertex, 3> vertices = {
-        Vertex {{ 0.0f, -0.5f, 0.0f }, { 1.0f, 0.0f, 0.0f }},
-        Vertex {{ 0.5f, 0.5f, 0.0f }, { 0.0f, 1.0f, 0.0f }},
-        Vertex {{ -0.5f, 0.5f, 0.0f }, { 0.0f, 0.0f, 1.0f }}
+    static constexpr std::array<Vertex, 4> vertices = {
+        Vertex {{ -0.5f, -0.5f, 0.0f }, { 1.0f, 0.0f, 0.0f }},
+        Vertex {{ 0.5f, -0.5f, 0.0f }, { 0.0f, 1.0f, 0.0f }},
+        Vertex {{ 0.5f, 0.5f, 0.0f }, { 0.0f, 0.0f, 1.0f }},
+        Vertex {{ -0.5f, 0.5f, 0.0f }, { 1.0f, 1.0f, 1.0f }}
+    };
+
+    static constexpr std::array<uint16_t, 6> indices = {
+        0, 1, 2,
+        2, 3, 0
     };
 
     static constexpr std::array<const char*, 1> deviceExtensions = {

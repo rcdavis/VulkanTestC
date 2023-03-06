@@ -49,6 +49,7 @@ void HelloTriangleApp::InitVulkan()
     CreateFramebuffers();
     CreateCommandPool();
     CreateVertexBuffer();
+    CreateIndexBuffer();
     CreateCommandBuffers();
     CreateSyncObjects();
 }
@@ -67,6 +68,11 @@ void HelloTriangleApp::MainLoop()
 void HelloTriangleApp::Cleanup()
 {
     CleanupSwapChain();
+
+    vkDestroyBuffer(mDevice, mIndexBuffer, nullptr);
+    mIndexBuffer = VK_NULL_HANDLE;
+    vkFreeMemory(mDevice, mIndexBufferMem, nullptr);
+    mIndexBufferMem = VK_NULL_HANDLE;
 
     vkDestroyBuffer(mDevice, mVertexBuffer, nullptr);
     mVertexBuffer = VK_NULL_HANDLE;
@@ -195,8 +201,8 @@ void HelloTriangleApp::CreateLogicalDevice()
 {
     constexpr float queuePriority = 1.0f;
 
-    auto indices = QueueFamilyIndices::Find(mPhysicalDevice, mSurface);
-    std::set<uint32_t> uniqueQueueFamilies = { indices.graphicsFamily.value(), indices.presentFamily.value() };
+    auto familyIndices = QueueFamilyIndices::Find(mPhysicalDevice, mSurface);
+    std::set<uint32_t> uniqueQueueFamilies = { familyIndices.graphicsFamily.value(), familyIndices.presentFamily.value() };
 
     std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
     for (const uint32_t queueFamily : uniqueQueueFamilies)
@@ -229,8 +235,8 @@ void HelloTriangleApp::CreateLogicalDevice()
     if (const auto result = vkCreateDevice(mPhysicalDevice, &createInfo, nullptr, &mDevice); result != VK_SUCCESS)
         throw std::runtime_error("Failed to create logical device");
 
-    vkGetDeviceQueue(mDevice, indices.graphicsFamily.value(), 0, &mGraphicsQueue);
-    vkGetDeviceQueue(mDevice, indices.presentFamily.value(), 0, &mPresentQueue);
+    vkGetDeviceQueue(mDevice, familyIndices.graphicsFamily.value(), 0, &mGraphicsQueue);
+    vkGetDeviceQueue(mDevice, familyIndices.presentFamily.value(), 0, &mPresentQueue);
 }
 
 void HelloTriangleApp::CreateSwapChain()
@@ -256,10 +262,10 @@ void HelloTriangleApp::CreateSwapChain()
     createInfo.presentMode = presentMode;
     createInfo.clipped = VK_TRUE;
 
-    auto indices = QueueFamilyIndices::Find(mPhysicalDevice, mSurface);
-    const auto familyIndices = indices.GetIndices();
+    auto queueFamilyIndices = QueueFamilyIndices::Find(mPhysicalDevice, mSurface);
+    const auto familyIndices = queueFamilyIndices.GetIndices();
 
-    if (indices.graphicsFamily != indices.presentFamily)
+    if (queueFamilyIndices.graphicsFamily != queueFamilyIndices.presentFamily)
     {
         createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
         createInfo.pQueueFamilyIndices = std::data(familyIndices);
@@ -482,12 +488,12 @@ void HelloTriangleApp::CreateFramebuffers()
 
 void HelloTriangleApp::CreateCommandPool()
 {
-    auto indices = QueueFamilyIndices::Find(mPhysicalDevice, mSurface);
+    auto queueFamilyIndices = QueueFamilyIndices::Find(mPhysicalDevice, mSurface);
 
     VkCommandPoolCreateInfo poolInfo{};
     poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
     poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-    poolInfo.queueFamilyIndex = indices.graphicsFamily.value();
+    poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
 
     if (vkCreateCommandPool(mDevice, &poolInfo, nullptr, &mCommandPool) != VK_SUCCESS)
         throw std::runtime_error("Failed to create command pool");
@@ -511,6 +517,29 @@ void HelloTriangleApp::CreateVertexBuffer()
     CreateBuffer(bufferSize, vertUsage, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, mVertexBuffer, mVertexBufferMem);
 
     CopyBuffer(stagingBuffer, mVertexBuffer, bufferSize);
+
+    vkDestroyBuffer(mDevice, stagingBuffer, nullptr);
+    vkFreeMemory(mDevice, stagingBufferMem, nullptr);
+}
+
+void HelloTriangleApp::CreateIndexBuffer()
+{
+    constexpr VkDeviceSize bufferSize = VkDeviceSize(sizeof(uint16_t) * std::size(indices));
+    constexpr VkMemoryPropertyFlags stagingProps = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+
+    VkBuffer stagingBuffer{};
+    VkDeviceMemory stagingBufferMem{};
+    CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, stagingProps, stagingBuffer, stagingBufferMem);
+
+    void* data = nullptr;
+    vkMapMemory(mDevice, stagingBufferMem, 0, bufferSize, 0, &data);
+    memcpy(data, std::data(indices), (size_t)bufferSize);
+    vkUnmapMemory(mDevice, stagingBufferMem);
+
+    constexpr VkBufferUsageFlags indexUsage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+    CreateBuffer(bufferSize, indexUsage, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, mIndexBuffer, mIndexBufferMem);
+
+    CopyBuffer(stagingBuffer, mIndexBuffer, bufferSize);
 
     vkDestroyBuffer(mDevice, stagingBuffer, nullptr);
     vkFreeMemory(mDevice, stagingBufferMem, nullptr);
@@ -579,6 +608,7 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
     std::array<VkBuffer, 1> vertBuffers = { mVertexBuffer };
     std::array<VkDeviceSize, 1> offsets = { 0 };
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, std::data(vertBuffers), std::data(offsets));
+    vkCmdBindIndexBuffer(commandBuffer, mIndexBuffer, VkDeviceSize(0), VK_INDEX_TYPE_UINT16);
 
     VkViewport viewport{};
     viewport.x = 0.0f;
@@ -594,7 +624,7 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
     scissor.extent = mSwapChainExtent;
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-    vkCmdDraw(commandBuffer, (uint32_t)std::size(vertices), 1, 0, 0);
+    vkCmdDrawIndexed(commandBuffer, (uint32_t)std::size(indices), 1, 0, 0, 0);
 
     vkCmdEndRenderPass(commandBuffer);
 
@@ -754,7 +784,7 @@ bool HelloTriangleApp::IsDeviceSuitable(VkPhysicalDevice device) const
 
     return props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU && features.geometryShader;*/
 
-    QueueFamilyIndices indices = QueueFamilyIndices::Find(device, mSurface);
+    QueueFamilyIndices familyIndices = QueueFamilyIndices::Find(device, mSurface);
 
     const bool extensionsSupported = CheckDeviceExtensionSupport(device);
 
@@ -765,7 +795,7 @@ bool HelloTriangleApp::IsDeviceSuitable(VkPhysicalDevice device) const
         swapChainAdequate = !std::empty(swapChainSupport.formats) && !std::empty(swapChainSupport.presentModes);
     }
 
-    return indices.IsComplete() && extensionsSupported && swapChainAdequate;
+    return familyIndices.IsComplete() && extensionsSupported && swapChainAdequate;
 }
 
 bool HelloTriangleApp::CheckDeviceExtensionSupport(VkPhysicalDevice device) const
