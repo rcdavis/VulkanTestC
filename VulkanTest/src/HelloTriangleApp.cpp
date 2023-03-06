@@ -27,11 +27,12 @@ void HelloTriangleApp::InitWindow()
     }
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
     mWindow = glfwCreateWindow(WindowWidth, WindowHeight, "Vulkan Test", nullptr, nullptr);
     if (!mWindow)
         throw std::runtime_error("Failed to create GLFW window");
+    glfwSetWindowUserPointer(mWindow, this);
+    glfwSetFramebufferSizeCallback(mWindow, FramebufferResizeCallback);
 }
 
 void HelloTriangleApp::InitVulkan()
@@ -58,11 +59,22 @@ void HelloTriangleApp::MainLoop()
         glfwPollEvents();
         DrawFrame();
     }
+
+    vkDeviceWaitIdle(mDevice);
 }
 
 void HelloTriangleApp::Cleanup()
 {
-    vkDeviceWaitIdle(mDevice);
+    CleanupSwapChain();
+
+    vkDestroyPipeline(mDevice, mGraphicsPipeline, nullptr);
+    mGraphicsPipeline = VK_NULL_HANDLE;
+
+    vkDestroyPipelineLayout(mDevice, mPipelineLayout, nullptr);
+    mPipelineLayout = VK_NULL_HANDLE;
+
+    vkDestroyRenderPass(mDevice, mRenderPass, nullptr);
+    mRenderPass = VK_NULL_HANDLE;
 
     for (int i = 0; i < MaxFramesInFlight; ++i)
     {
@@ -77,26 +89,6 @@ void HelloTriangleApp::Cleanup()
     vkDestroyCommandPool(mDevice, mCommandPool, nullptr);
     mCommandPool = VK_NULL_HANDLE;
     mCommandBuffers.clear();
-
-    for (auto fb : mSwapChainFramebuffers)
-        vkDestroyFramebuffer(mDevice, fb, nullptr);
-    mSwapChainFramebuffers.clear();
-
-    vkDestroyPipeline(mDevice, mGraphicsPipeline, nullptr);
-    mGraphicsPipeline = VK_NULL_HANDLE;
-
-    vkDestroyPipelineLayout(mDevice, mPipelineLayout, nullptr);
-    mPipelineLayout = VK_NULL_HANDLE;
-
-    vkDestroyRenderPass(mDevice, mRenderPass, nullptr);
-    mRenderPass = VK_NULL_HANDLE;
-
-    for (auto imageView : mSwapChainImageViews)
-        vkDestroyImageView(mDevice, imageView, nullptr);
-    mSwapChainImageViews.clear();
-
-    vkDestroySwapchainKHR(mDevice, mSwapChain, nullptr);
-    mSwapChain = VK_NULL_HANDLE;
 
     vkDestroyDevice(mDevice, nullptr);
     mDevice = VK_NULL_HANDLE;
@@ -572,10 +564,18 @@ void HelloTriangleApp::DrawFrame()
     constexpr uint64_t timeout = UINT64_MAX;
 
     vkWaitForFences(mDevice, 1, &mInFlightFences[mCurrentFrame], VK_TRUE, timeout);
-    vkResetFences(mDevice, 1, &mInFlightFences[mCurrentFrame]);
 
     uint32_t imageIndex = 0;
-    vkAcquireNextImageKHR(mDevice, mSwapChain, timeout, mImageAvailableSemaphores[mCurrentFrame], VK_NULL_HANDLE, &imageIndex);
+    auto result = vkAcquireNextImageKHR(mDevice, mSwapChain, timeout, mImageAvailableSemaphores[mCurrentFrame], VK_NULL_HANDLE, &imageIndex);
+    if (result == VK_ERROR_OUT_OF_DATE_KHR)
+    {
+        RecreateSwapChain();
+        return;
+    }
+    else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
+        throw std::runtime_error("Failed to acquire swap chain image");
+
+    vkResetFences(mDevice, 1, &mInFlightFences[mCurrentFrame]);
 
     vkResetCommandBuffer(mCommandBuffers[mCurrentFrame], 0);
     RecordCommandBuffer(mCommandBuffers[mCurrentFrame], imageIndex);
@@ -607,9 +607,51 @@ void HelloTriangleApp::DrawFrame()
     presentInfo.swapchainCount = (uint32_t)std::size(swapChains);
     presentInfo.pImageIndices = &imageIndex;
 
-    vkQueuePresentKHR(mPresentQueue, &presentInfo);
+    result = vkQueuePresentKHR(mPresentQueue, &presentInfo);
+    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || mFramebufferResized)
+    {
+        mFramebufferResized = false;
+        RecreateSwapChain();
+    }
+    else if (result != VK_SUCCESS)
+        throw std::runtime_error("Failed to present swap chain image");
 
     mCurrentFrame = (mCurrentFrame + 1) % MaxFramesInFlight;
+}
+
+void HelloTriangleApp::RecreateSwapChain()
+{
+    int width = 0;
+    int height = 0;
+    glfwGetFramebufferSize(mWindow, &width, &height);
+    while (width == 0 || height == 0)
+    {
+        glfwGetFramebufferSize(mWindow, &width, &height);
+        glfwWaitEvents();
+    }
+
+    vkDeviceWaitIdle(mDevice);
+
+    CleanupSwapChain();
+
+    CreateSwapChain();
+    CreateImageViews();
+    CreateFramebuffers();
+}
+
+void HelloTriangleApp::CleanupSwapChain()
+{
+    for (auto& fb : mSwapChainFramebuffers)
+        vkDestroyFramebuffer(mDevice, fb, nullptr);
+    mSwapChainFramebuffers.clear();
+
+    for (auto& imageView : mSwapChainImageViews)
+        vkDestroyImageView(mDevice, imageView, nullptr);
+    mSwapChainImageViews.clear();
+    mSwapChainImages.clear();
+
+    vkDestroySwapchainKHR(mDevice, mSwapChain, nullptr);
+    mSwapChain = VK_NULL_HANDLE;
 }
 
 bool HelloTriangleApp::CheckValidationLayerSupport() const
@@ -754,4 +796,10 @@ VkDebugUtilsMessengerCreateInfoEXT HelloTriangleApp::CreateDebugMessengerCreateI
         VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
     createInfo.pfnUserCallback = vk::ext::DebugCallback;
     return createInfo;
+}
+
+void HelloTriangleApp::FramebufferResizeCallback(GLFWwindow* window, int width, int height)
+{
+    auto app = (HelloTriangleApp*)glfwGetWindowUserPointer(window);
+    app->mFramebufferResized = true;
 }

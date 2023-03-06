@@ -45,6 +45,9 @@ private:
 
     void RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 
+    void RecreateSwapChain();
+    void CleanupSwapChain();
+
     bool CheckValidationLayerSupport() const;
     std::vector<const char*> GetRequiredExtensions() const;
     void SetupDebugMessenger();
@@ -56,6 +59,8 @@ private:
     VkShaderModule CreateShaderModule(const std::vector<char>& code);
 
     VkDebugUtilsMessengerCreateInfoEXT CreateDebugMessengerCreateInfo() const;
+
+    static void FramebufferResizeCallback(GLFWwindow* window, int width, int height);
 
 private:
     static constexpr uint32_t MaxFramesInFlight = 2;
@@ -94,6 +99,8 @@ private:
     VkDebugUtilsMessengerEXT mDebugMessenger{};
 
     uint32_t mCurrentFrame = 0;
+
+    bool mFramebufferResized = false;
 
     static constexpr uint32_t WindowWidth = 800;
     static constexpr uint32_t WindowHeight = 600;
