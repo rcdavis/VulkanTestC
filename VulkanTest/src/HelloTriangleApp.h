@@ -6,6 +6,8 @@
 
 #include <vulkan/vulkan.h>
 
+#include "Vertex.h"
+
 struct GLFWwindow;
 
 class HelloTriangleApp
@@ -40,6 +42,7 @@ private:
     void CreateGraphicsPipeline();
     void CreateFramebuffers();
     void CreateCommandPool();
+    void CreateVertexBuffer();
     void CreateCommandBuffers();
     void CreateSyncObjects();
 
@@ -59,6 +62,7 @@ private:
     VkShaderModule CreateShaderModule(const std::vector<char>& code);
 
     VkDebugUtilsMessengerCreateInfoEXT CreateDebugMessengerCreateInfo() const;
+    uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags props) const;
 
     static void FramebufferResizeCallback(GLFWwindow* window, int width, int height);
 
@@ -88,13 +92,14 @@ private:
     VkPipeline mGraphicsPipeline{};
 
     VkCommandPool mCommandPool{};
-    //VkCommandBuffer mCommandBuffer{};
-    //std::array<VkCommandBuffer, MaxFramesInFlight> commandBuffers{};
     std::vector<VkCommandBuffer> mCommandBuffers;
 
     std::vector<VkSemaphore> mImageAvailableSemaphores;
     std::vector<VkSemaphore> mRenderFinishedSemaphores;
     std::vector<VkFence> mInFlightFences;
+
+    VkBuffer mVertexBuffer{};
+    VkDeviceMemory mVertexBufferMem{};
 
     VkDebugUtilsMessengerEXT mDebugMessenger{};
 
@@ -104,6 +109,12 @@ private:
 
     static constexpr uint32_t WindowWidth = 800;
     static constexpr uint32_t WindowHeight = 600;
+
+    static constexpr std::array<Vertex, 3> vertices = {
+        Vertex {{ 0.0f, -0.5f, 0.0f }, { 1.0f, 0.0f, 0.0f }},
+        Vertex {{ 0.5f, 0.5f, 0.0f }, { 0.0f, 1.0f, 0.0f }},
+        Vertex {{ -0.5f, 0.5f, 0.0f }, { 0.0f, 0.0f, 1.0f }}
+    };
 
     static constexpr std::array<const char*, 1> deviceExtensions = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME
