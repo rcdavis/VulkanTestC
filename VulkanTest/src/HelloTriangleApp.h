@@ -63,6 +63,9 @@ private:
 
     VkDebugUtilsMessengerCreateInfoEXT CreateDebugMessengerCreateInfo() const;
     uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags props) const;
+    void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags props,
+        VkBuffer& buffer, VkDeviceMemory& bufferMem);
+    void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 
     static void FramebufferResizeCallback(GLFWwindow* window, int width, int height);
 
