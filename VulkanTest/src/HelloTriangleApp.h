@@ -43,6 +43,7 @@ private:
     void CreateGraphicsPipeline();
     void CreateFramebuffers();
     void CreateCommandPool();
+    void CreateTextureImage();
     void CreateVertexBuffer();
     void CreateIndexBuffer();
     void CreateUniformBuffers();
@@ -72,6 +73,13 @@ private:
         VkBuffer& buffer, VkDeviceMemory& bufferMem);
     void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
     void UpdateUniformBuffer(uint32_t curImage);
+    void CreateImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling,
+        VkImageUsageFlags usage, VkMemoryPropertyFlags props, VkImage& image, VkDeviceMemory& imageMem);
+    void TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
+    void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
+
+    VkCommandBuffer BeginSingleTimeCommands();
+    void EndSingleTimeCommands(VkCommandBuffer commandBuffer);
 
     static void FramebufferResizeCallback(GLFWwindow* window, int width, int height);
 
@@ -120,6 +128,9 @@ private:
 
     VkDescriptorPool mDescriptorPool{};
     std::vector<VkDescriptorSet> mDescriptorSets;
+
+    VkImage mTexImage{};
+    VkDeviceMemory mTexImageMem{};
 
     VkDebugUtilsMessengerEXT mDebugMessenger{};
 
