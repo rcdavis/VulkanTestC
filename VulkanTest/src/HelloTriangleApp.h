@@ -148,10 +148,10 @@ private:
     static constexpr uint32_t WindowHeight = 600;
 
     static constexpr std::array<Vertex, 4> vertices = {
-        Vertex {{ -0.5f, -0.5f, 0.0f }, { 1.0f, 0.0f, 0.0f }},
-        Vertex {{ 0.5f, -0.5f, 0.0f }, { 0.0f, 1.0f, 0.0f }},
-        Vertex {{ 0.5f, 0.5f, 0.0f }, { 0.0f, 0.0f, 1.0f }},
-        Vertex {{ -0.5f, 0.5f, 0.0f }, { 1.0f, 1.0f, 1.0f }}
+        Vertex {{ -0.5f, -0.5f, 0.0f }, { 1.0f, 0.0f, 0.0f }, { 1.0f, 0.0f }},
+        Vertex {{ 0.5f, -0.5f, 0.0f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f }},
+        Vertex {{ 0.5f, 0.5f, 0.0f }, { 0.0f, 0.0f, 1.0f }, { 0.0f, 1.0f }},
+        Vertex {{ -0.5f, 0.5f, 0.0f }, { 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f }}
     };
 
     static constexpr std::array<uint16_t, 6> indices = {
