@@ -49,6 +49,7 @@ private:
     void CreateTextureImage();
     void CreateTextureImageView();
     void CreateTextureSampler();
+    void LoadModel();
     void CreateVertexBuffer();
     void CreateIndexBuffer();
     void CreateUniformBuffers();
@@ -126,6 +127,9 @@ private:
     std::vector<VkSemaphore> mRenderFinishedSemaphores;
     std::vector<VkFence> mInFlightFences;
 
+    std::vector<Vertex> vertices;
+    std::vector<uint16_t> indices;
+
     VkBuffer mVertexBuffer{};
     VkDeviceMemory mVertexBufferMem{};
 
@@ -153,22 +157,8 @@ private:
     static constexpr uint32_t WindowWidth = 800;
     static constexpr uint32_t WindowHeight = 600;
 
-    static constexpr std::array<Vertex, 8> vertices = {
-        Vertex {{ -0.5f, -0.5f, 0.0f }, { 1.0f, 0.0f, 0.0f }, { 1.0f, 0.0f }},
-        Vertex {{ 0.5f, -0.5f, 0.0f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f }},
-        Vertex {{ 0.5f, 0.5f, 0.0f }, { 0.0f, 0.0f, 1.0f }, { 0.0f, 1.0f }},
-        Vertex {{ -0.5f, 0.5f, 0.0f }, { 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f }},
-
-        Vertex {{ -0.5f, -0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f }, { 1.0f, 0.0f }},
-        Vertex {{ 0.5f, -0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f }},
-        Vertex {{ 0.5f, 0.5f, -0.5f }, { 0.0f, 0.0f, 1.0f }, { 0.0f, 1.0f }},
-        Vertex {{ -0.5f, 0.5f, -0.5f }, { 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f }}
-    };
-
-    static constexpr std::array<uint16_t, 12> indices = {
-        0, 1, 2, 2, 3, 0,
-        4, 5, 6, 6, 7, 4
-    };
+    static constexpr const char* MeshName = "assets/meshes/VikingRoom.obj";
+    static constexpr const char* TextureName = "assets/textures/VikingRoom.png";
 
     static constexpr std::array<const char*, 1> deviceExtensions = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME

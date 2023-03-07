@@ -11,11 +11,16 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
+#define TINYOBJLOADER_IMPLEMENTATION
+#define TINYOBJLOADER_USE_MAPBOX_EARCUT
+#include <tiny_obj_loader.h>
+
 #include <chrono>
 
 #include <stdexcept>
 #include <set>
 #include <string>
+#include <unordered_map>
 
 #include "Log.h"
 #include "Vulkan/VulkanExts.h"
@@ -64,6 +69,7 @@ void HelloTriangleApp::InitVulkan()
     CreateTextureImage();
     CreateTextureImageView();
     CreateTextureSampler();
+    LoadModel();
     CreateVertexBuffer();
     CreateIndexBuffer();
     CreateUniformBuffers();
@@ -591,7 +597,7 @@ void HelloTriangleApp::CreateTextureImage()
     int texWidth = 0;
     int texHeight = 0;
     int texChannels = 0;
-    stbi_uc* pixels = stbi_load("assets/textures/texture.jpg", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+    stbi_uc* pixels = stbi_load(TextureName, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
     const VkDeviceSize imageSize = (VkDeviceSize)texWidth * texHeight * 4;
 
     if (!pixels)
@@ -649,9 +655,67 @@ void HelloTriangleApp::CreateTextureSampler()
         throw std::runtime_error("Failed to create texture sampler");
 }
 
+void HelloTriangleApp::LoadModel()
+{
+    tinyobj::ObjReader reader;
+    if (!reader.ParseFromFile(MeshName))
+    {
+        if (!reader.Error().empty())
+            throw std::runtime_error("TinyObj: " + reader.Error());
+    }
+
+    if (!reader.Warning().empty())
+        LOG_WARN("TinyObj: {0}", reader.Warning());
+
+    const auto& attrib = reader.GetAttrib();
+    const auto& shapes = reader.GetShapes();
+    const auto& materials = reader.GetMaterials();
+
+    std::unordered_map<Vertex, uint32_t> uniqueVerts;
+
+    for (const auto& shape : shapes)
+    {
+        for (const auto& index : shape.mesh.indices)
+        {
+            Vertex vert;
+
+            vert.pos = {
+                attrib.vertices[3 * index.vertex_index + 0],
+                attrib.vertices[3 * index.vertex_index + 1],
+                attrib.vertices[3 * index.vertex_index + 2]
+            };
+
+            if (!std::empty(attrib.colors))
+            {
+                vert.color = {
+                    attrib.colors[3 * index.vertex_index + 0],
+                    attrib.colors[3 * index.vertex_index + 1],
+                    attrib.colors[3 * index.vertex_index + 2]
+                };
+            }
+
+            if (index.texcoord_index >= 0)
+            {
+                vert.texCoord = {
+                    attrib.texcoords[2 * index.texcoord_index + 0],
+                    1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
+                };
+            }
+
+            if (uniqueVerts.count(vert) == 0)
+            {
+                uniqueVerts[vert] = (uint32_t)std::size(vertices);
+                vertices.push_back(vert);
+            }
+
+            indices.push_back(uniqueVerts[vert]);
+        }
+    }
+}
+
 void HelloTriangleApp::CreateVertexBuffer()
 {
-    constexpr VkDeviceSize bufferSize = VkDeviceSize(sizeof(Vertex) * std::size(vertices));
+    VkDeviceSize bufferSize = VkDeviceSize(sizeof(Vertex) * std::size(vertices));
     constexpr VkMemoryPropertyFlags stagingProps = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
     VkBuffer stagingBuffer{};
@@ -674,7 +738,7 @@ void HelloTriangleApp::CreateVertexBuffer()
 
 void HelloTriangleApp::CreateIndexBuffer()
 {
-    constexpr VkDeviceSize bufferSize = VkDeviceSize(sizeof(uint16_t) * std::size(indices));
+    VkDeviceSize bufferSize = VkDeviceSize(sizeof(uint16_t) * std::size(indices));
     constexpr VkMemoryPropertyFlags stagingProps = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
     VkBuffer stagingBuffer{};
@@ -715,15 +779,15 @@ void HelloTriangleApp::CreateDescriptorPool()
 {
     std::array<VkDescriptorPoolSize, 2> poolSizes{};
     poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    poolSizes[0].descriptorCount = (uint32_t)MaxFramesInFlight;
+    poolSizes[0].descriptorCount = MaxFramesInFlight;
     poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    poolSizes[1].descriptorCount = (uint32_t)MaxFramesInFlight;
+    poolSizes[1].descriptorCount = MaxFramesInFlight;
 
     VkDescriptorPoolCreateInfo poolInfo{};
     poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
     poolInfo.pPoolSizes = std::data(poolSizes);
     poolInfo.poolSizeCount = (uint32_t)std::size(poolSizes);
-    poolInfo.maxSets = (uint32_t)MaxFramesInFlight;
+    poolInfo.maxSets = MaxFramesInFlight;
 
     if (vkCreateDescriptorPool(mDevice, &poolInfo, nullptr, &mDescriptorPool) != VK_SUCCESS)
         throw std::runtime_error("Failed to create descriptor pool");
@@ -735,7 +799,7 @@ void HelloTriangleApp::CreateDescriptorSets()
     VkDescriptorSetAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     allocInfo.descriptorPool = mDescriptorPool;
-    allocInfo.descriptorSetCount = (uint32_t)MaxFramesInFlight;
+    allocInfo.descriptorSetCount = MaxFramesInFlight;
     allocInfo.pSetLayouts = std::data(layouts);
 
     mDescriptorSets.resize(MaxFramesInFlight);
@@ -1163,7 +1227,7 @@ void HelloTriangleApp::UpdateUniformBuffer(uint32_t curImage)
 {
     static auto startTime = std::chrono::high_resolution_clock::now();
     auto curTime = std::chrono::high_resolution_clock::now();
-    const float time = std::chrono::duration<float, std::chrono::seconds::period>(curTime - startTime).count();
+    const float time = std::chrono::duration<float, std::chrono::seconds::period>(curTime -startTime).count();
 
     UniformBufferObject ubo;
     ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));

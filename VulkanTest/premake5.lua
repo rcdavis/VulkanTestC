@@ -28,6 +28,7 @@ project "VulkanTest"
         "%{IncludeDir.glm}",
         "%{IncludeDir.stb_image}",
         "%{IncludeDir.Spdlog}",
+        "%{IncludeDir.TinyObjLoader}",
         "%{IncludeDir.Vulkan}"
     }
 
