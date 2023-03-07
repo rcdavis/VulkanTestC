@@ -45,6 +45,7 @@ private:
     void CreateGraphicsPipeline();
     void CreateFramebuffers();
     void CreateCommandPool();
+    void CreateColorResources();
     void CreateDepthResources();
     void CreateTextureImage();
     void CreateTextureImageView();
@@ -79,7 +80,7 @@ private:
         VkBuffer& buffer, VkDeviceMemory& bufferMem);
     void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
     void UpdateUniformBuffer(uint32_t curImage);
-    void CreateImage(uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat format, VkImageTiling tiling,
+    void CreateImage(uint32_t width, uint32_t height, uint32_t mipLevels, VkSampleCountFlagBits numSamples, VkFormat format, VkImageTiling tiling,
         VkImageUsageFlags usage, VkMemoryPropertyFlags props, VkImage& image, VkDeviceMemory& imageMem);
     void TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels);
     void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
@@ -93,6 +94,8 @@ private:
 
     VkFormat FindDepthFormat() const;
     bool HasStencilComponent(VkFormat format) const;
+
+    VkSampleCountFlagBits GetMaxUsableSampleCount() const;
 
     static void FramebufferResizeCallback(GLFWwindow* window, int width, int height);
 
@@ -151,7 +154,11 @@ private:
 
     VulkanImage mDepthImage;
 
+    VulkanImage mColorImage;
+
     VkDebugUtilsMessengerEXT mDebugMessenger{};
+
+    VkSampleCountFlagBits mMsaaSamples = VK_SAMPLE_COUNT_1_BIT;
 
     uint32_t mCurrentFrame = 0;
 

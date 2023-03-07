@@ -64,6 +64,7 @@ void HelloTriangleApp::InitVulkan()
     CreateDescriptorSetLayout();
     CreateGraphicsPipeline();
     CreateCommandPool();
+    CreateColorResources();
     CreateDepthResources();
     CreateFramebuffers();
     CreateTextureImage();
@@ -233,6 +234,7 @@ void HelloTriangleApp::PickPhysicalDevice()
         if (IsDeviceSuitable(device))
         {
             mPhysicalDevice = device;
+            mMsaaSamples = GetMaxUsableSampleCount();
             break;
         }
     }
@@ -339,24 +341,33 @@ void HelloTriangleApp::CreateImageViews()
 
 void HelloTriangleApp::CreateRenderPass()
 {
-    std::array<VkAttachmentDescription, 2> attachments{};
+    std::array<VkAttachmentDescription, 3> attachments{};
     attachments[0].format = mSwapChainImageFormat;
-    attachments[0].samples = VK_SAMPLE_COUNT_1_BIT;
+    attachments[0].samples = mMsaaSamples;
     attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
     attachments[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
     attachments[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     attachments[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     attachments[0].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    attachments[0].finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    attachments[0].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
     attachments[1].format = FindDepthFormat();
-    attachments[1].samples = VK_SAMPLE_COUNT_1_BIT;
+    attachments[1].samples = mMsaaSamples;
     attachments[1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
     attachments[1].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
     attachments[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     attachments[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     attachments[1].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     attachments[1].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+    attachments[2].format = mSwapChainImageFormat;
+    attachments[2].samples = VK_SAMPLE_COUNT_1_BIT;
+    attachments[2].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    attachments[2].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    attachments[2].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    attachments[2].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    attachments[2].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    attachments[2].finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
     VkAttachmentReference colorAttachmentRef{};
     colorAttachmentRef.attachment = 0;
@@ -366,11 +377,16 @@ void HelloTriangleApp::CreateRenderPass()
     depthAttachmentRef.attachment = 1;
     depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
+    VkAttachmentReference colorAttachmentResolveRef{};
+    colorAttachmentResolveRef.attachment = 2;
+    colorAttachmentResolveRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
     VkSubpassDescription subpass{};
     subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
     subpass.pColorAttachments = &colorAttachmentRef;
     subpass.colorAttachmentCount = 1;
     subpass.pDepthStencilAttachment = &depthAttachmentRef;
+    subpass.pResolveAttachments = &colorAttachmentResolveRef;
 
     VkSubpassDependency dependency{};
     dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
@@ -492,7 +508,7 @@ void HelloTriangleApp::CreateGraphicsPipeline()
     VkPipelineMultisampleStateCreateInfo multisampling{};
     multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
     multisampling.sampleShadingEnable = VK_FALSE;
-    multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+    multisampling.rasterizationSamples = mMsaaSamples;
 
     VkPipelineColorBlendAttachmentState colorBlendAttachment{};
     colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
@@ -548,9 +564,10 @@ void HelloTriangleApp::CreateFramebuffers()
     mSwapChainFramebuffers.resize(std::size(mSwapChainImageViews));
     for (int i = 0; i < std::size(mSwapChainImageViews); ++i)
     {
-        const std::array<VkImageView, 2> attachments = {
-            mSwapChainImageViews[i],
-            mDepthImage.mImageView
+        const std::array<VkImageView, 3> attachments = {
+            mColorImage.mImageView,
+            mDepthImage.mImageView,
+            mSwapChainImageViews[i]
         };
 
         VkFramebufferCreateInfo framebufferInfo{};
@@ -580,11 +597,22 @@ void HelloTriangleApp::CreateCommandPool()
         throw std::runtime_error("Failed to create command pool");
 }
 
+void HelloTriangleApp::CreateColorResources()
+{
+    constexpr VkImageUsageFlags usage = VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    VkFormat colorFormat = mSwapChainImageFormat;
+
+    mColorImage.mDevice = mDevice;
+    CreateImage(mSwapChainExtent.width, mSwapChainExtent.height, 1, mMsaaSamples, colorFormat, VK_IMAGE_TILING_OPTIMAL,
+        usage, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, mColorImage.mImage, mColorImage.mImageMem);
+    mColorImage.mImageView = CreateImageView(mColorImage.mImage, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+}
+
 void HelloTriangleApp::CreateDepthResources()
 {
     mDepthImage.mDevice = mDevice;
     auto depthFormat = FindDepthFormat();
-    CreateImage(mSwapChainExtent.width, mSwapChainExtent.height, 1, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+    CreateImage(mSwapChainExtent.width, mSwapChainExtent.height, 1, mMsaaSamples, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, mDepthImage.mImage, mDepthImage.mImageMem);
     mDepthImage.mImageView = CreateImageView(mDepthImage.mImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
 }
@@ -617,12 +645,11 @@ void HelloTriangleApp::CreateTextureImage()
     stbi_image_free(pixels);
 
     constexpr VkImageUsageFlags imageUsage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-    CreateImage(texWidth, texHeight, mMipLevels, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
+    CreateImage(texWidth, texHeight, mMipLevels, VK_SAMPLE_COUNT_1_BIT, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
         imageUsage, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, mTexImage.mImage, mTexImage.mImageMem);
 
     TransitionImageLayout(mTexImage.mImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mMipLevels);
     CopyBufferToImage(stagingBuffer, mTexImage.mImage, (uint32_t)texWidth, (uint32_t)texHeight);
-    //TransitionImageLayout(mTexImage.mImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, mMipLevels);
 
     GenerateMipmaps(mTexImage.mImage, VK_FORMAT_R8G8B8A8_SRGB, texWidth, texHeight, mMipLevels);
 
@@ -893,9 +920,11 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
     if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS)
         throw std::runtime_error("Failed to begin recording command buffer");
 
+    constexpr VkClearColorValue clearColor{ 0.0f, 0.0f, 0.0f, 1.0f };
+    constexpr VkClearDepthStencilValue clearDepth{ 1.0f, 0 };
     std::array<VkClearValue, 2> clearValues{};
-    clearValues[0].color = { { 0.0f, 0.0f, 0.0f, 1.0f } };
-    clearValues[1].depthStencil = { 1.0f, 0 };
+    clearValues[0].color = clearColor;
+    clearValues[1].depthStencil = clearDepth;
 
     VkRenderPassBeginInfo renderPassInfo{};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -1018,12 +1047,14 @@ void HelloTriangleApp::RecreateSwapChain()
 
     CreateSwapChain();
     CreateImageViews();
+    CreateColorResources();
     CreateDepthResources();
     CreateFramebuffers();
 }
 
 void HelloTriangleApp::CleanupSwapChain()
 {
+    mColorImage.Destroy();
     mDepthImage.Destroy();
 
     for (auto& fb : mSwapChainFramebuffers)
@@ -1249,8 +1280,9 @@ void HelloTriangleApp::UpdateUniformBuffer(uint32_t curImage)
     memcpy(mUniformBuffersMapped[curImage], &ubo, sizeof(ubo));
 }
 
-void HelloTriangleApp::CreateImage(uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat format, VkImageTiling tiling,
-    VkImageUsageFlags usage, VkMemoryPropertyFlags props, VkImage& image, VkDeviceMemory& imageMem)
+void HelloTriangleApp::CreateImage(uint32_t width, uint32_t height, uint32_t mipLevels, VkSampleCountFlagBits numSamples,
+    VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags props,
+    VkImage& image, VkDeviceMemory& imageMem)
 {
     VkImageCreateInfo imageInfo{};
     imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -1265,7 +1297,7 @@ void HelloTriangleApp::CreateImage(uint32_t width, uint32_t height, uint32_t mip
     imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     imageInfo.usage = usage;
     imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+    imageInfo.samples = numSamples;
 
     if (vkCreateImage(mDevice, &imageInfo, nullptr, &image) != VK_SUCCESS)
         throw std::runtime_error("Failed to create image");
@@ -1481,6 +1513,28 @@ VkFormat HelloTriangleApp::FindDepthFormat() const
 bool HelloTriangleApp::HasStencilComponent(VkFormat format) const
 {
     return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
+}
+
+VkSampleCountFlagBits HelloTriangleApp::GetMaxUsableSampleCount() const
+{
+    VkPhysicalDeviceProperties props{};
+    vkGetPhysicalDeviceProperties(mPhysicalDevice, &props);
+
+    const VkSampleCountFlags counts = (props.limits.framebufferColorSampleCounts & props.limits.framebufferDepthSampleCounts);
+    if (counts & VK_SAMPLE_COUNT_64_BIT)
+        return VK_SAMPLE_COUNT_64_BIT;
+    if (counts & VK_SAMPLE_COUNT_32_BIT)
+        return VK_SAMPLE_COUNT_32_BIT;
+    if (counts & VK_SAMPLE_COUNT_16_BIT)
+        return VK_SAMPLE_COUNT_16_BIT;
+    if (counts & VK_SAMPLE_COUNT_8_BIT)
+        return VK_SAMPLE_COUNT_8_BIT;
+    if (counts & VK_SAMPLE_COUNT_4_BIT)
+        return VK_SAMPLE_COUNT_4_BIT;
+    if (counts & VK_SAMPLE_COUNT_2_BIT)
+        return VK_SAMPLE_COUNT_2_BIT;
+
+    return VK_SAMPLE_COUNT_1_BIT;
 }
 
 void HelloTriangleApp::FramebufferResizeCallback(GLFWwindow* window, int width, int height)
