@@ -72,7 +72,6 @@ private:
     VkSurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats) const;
     VkPresentModeKHR ChooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes) const;
     VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& caps) const;
-    VkShaderModule CreateShaderModule(const std::vector<char>& code);
 
     VkDebugUtilsMessengerCreateInfoEXT CreateDebugMessengerCreateInfo() const;
     VkFormat FindSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) const;
@@ -94,8 +93,6 @@ private:
 
     VkFormat FindDepthFormat() const;
     bool HasStencilComponent(VkFormat format) const;
-
-    VkSampleCountFlagBits GetMaxUsableSampleCount() const;
 
     static void FramebufferResizeCallback(GLFWwindow* window, int width, int height);
 

@@ -2,6 +2,8 @@
 
 #include <stdexcept>
 
+#include "FileUtils.h"
+
 namespace vk::utils
 {
     std::vector<VkPhysicalDevice> GetPhysicalDevices(VkInstance instance)
@@ -30,15 +32,15 @@ namespace vk::utils
         return extensionProps;
     }
 
-    std::vector<VkExtensionProperties> GetPhysicalDeviceExtProps(VkPhysicalDevice device)
+    std::vector<VkExtensionProperties> GetPhysicalDeviceExtProps(VkPhysicalDevice physicalDevice)
     {
         uint32_t extCount = 0;
-        vkEnumerateDeviceExtensionProperties(device, nullptr, &extCount, nullptr);
+        vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extCount, nullptr);
         if (extCount == 0)
             return {};
 
         std::vector<VkExtensionProperties> availableExtensions(extCount);
-        vkEnumerateDeviceExtensionProperties(device, nullptr, &extCount, std::data(availableExtensions));
+        vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extCount, std::data(availableExtensions));
 
         return availableExtensions;
     }
@@ -81,5 +83,43 @@ namespace vk::utils
         }
 
         throw std::runtime_error("Failed to find suitable memory type");
+    }
+
+    VkSampleCountFlagBits GetMaxUsableSampleCount(VkPhysicalDevice physicalDevice)
+    {
+        VkPhysicalDeviceProperties props{};
+        vkGetPhysicalDeviceProperties(physicalDevice, &props);
+
+        const VkSampleCountFlags counts = (props.limits.framebufferColorSampleCounts & props.limits.framebufferDepthSampleCounts);
+        if (counts & VK_SAMPLE_COUNT_64_BIT)
+            return VK_SAMPLE_COUNT_64_BIT;
+        if (counts & VK_SAMPLE_COUNT_32_BIT)
+            return VK_SAMPLE_COUNT_32_BIT;
+        if (counts & VK_SAMPLE_COUNT_16_BIT)
+            return VK_SAMPLE_COUNT_16_BIT;
+        if (counts & VK_SAMPLE_COUNT_8_BIT)
+            return VK_SAMPLE_COUNT_8_BIT;
+        if (counts & VK_SAMPLE_COUNT_4_BIT)
+            return VK_SAMPLE_COUNT_4_BIT;
+        if (counts & VK_SAMPLE_COUNT_2_BIT)
+            return VK_SAMPLE_COUNT_2_BIT;
+
+        return VK_SAMPLE_COUNT_1_BIT;
+    }
+
+    VkShaderModule CreateShaderModule(VkDevice device, const std::filesystem::path& filepath)
+    {
+        const auto code = FileUtils::ReadFile(filepath);
+
+        VkShaderModuleCreateInfo createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+        createInfo.pCode = (const uint32_t*)std::data(code);
+        createInfo.codeSize = std::size(code);
+
+        VkShaderModule shaderModule{};
+        if (const auto result = vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule); result != VK_SUCCESS)
+            throw std::runtime_error("Failed to create shader module");
+
+        return shaderModule;
     }
 }

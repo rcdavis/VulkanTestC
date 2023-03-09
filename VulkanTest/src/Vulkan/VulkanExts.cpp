@@ -25,13 +25,18 @@ namespace vk::ext
         return VK_ERROR_EXTENSION_NOT_PRESENT;
     }
 
-    void DestroyDebugUtilsMessenger(
+    VkResult DestroyDebugUtilsMessenger(
         VkInstance instance,
         VkDebugUtilsMessengerEXT debugMessenger,
         const VkAllocationCallbacks* pAllocator)
     {
         if (destroyDebugMessengerFunc)
+        {
             destroyDebugMessengerFunc(instance, debugMessenger, pAllocator);
+            return VK_SUCCESS;
+        }
+
+        return VK_ERROR_EXTENSION_NOT_PRESENT;
     }
 
     VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(

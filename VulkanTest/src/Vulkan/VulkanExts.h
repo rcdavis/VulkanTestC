@@ -12,7 +12,7 @@ namespace vk::ext
         VkDebugUtilsMessengerEXT* pDebugMessenger,
         const VkAllocationCallbacks* pAllocator = nullptr);
 
-    void DestroyDebugUtilsMessenger(
+    VkResult DestroyDebugUtilsMessenger(
         VkInstance instance,
         VkDebugUtilsMessengerEXT debugMessenger,
         const VkAllocationCallbacks* pAllocator = nullptr);

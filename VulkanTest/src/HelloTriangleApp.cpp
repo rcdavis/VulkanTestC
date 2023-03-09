@@ -234,7 +234,7 @@ void HelloTriangleApp::PickPhysicalDevice()
         if (IsDeviceSuitable(device))
         {
             mPhysicalDevice = device;
-            mMsaaSamples = GetMaxUsableSampleCount();
+            mMsaaSamples = vk::utils::GetMaxUsableSampleCount(mPhysicalDevice);
             break;
         }
     }
@@ -411,19 +411,17 @@ void HelloTriangleApp::CreateRenderPass()
 
 void HelloTriangleApp::CreateDescriptorSetLayout()
 {
-    VkDescriptorSetLayoutBinding uboLayoutBinding{};
-    uboLayoutBinding.binding = 0;
-    uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    uboLayoutBinding.descriptorCount = 1;
-    uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    std::array<VkDescriptorSetLayoutBinding, 2> bindings{};
+    bindings[0].binding = 0;
+    bindings[0].descriptorCount = 1;
+    bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    bindings[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
-    VkDescriptorSetLayoutBinding samplerLayoutBinding{};
-    samplerLayoutBinding.binding = 1;
-    samplerLayoutBinding.descriptorCount = 1;
-    samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    bindings[1].binding = 1;
+    bindings[1].descriptorCount = 1;
+    bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    bindings[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-    std::array<VkDescriptorSetLayoutBinding, 2> bindings = { uboLayoutBinding, samplerLayoutBinding };
     VkDescriptorSetLayoutCreateInfo layoutInfo{};
     layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     layoutInfo.pBindings = std::data(bindings);
@@ -435,8 +433,8 @@ void HelloTriangleApp::CreateDescriptorSetLayout()
 
 void HelloTriangleApp::CreateGraphicsPipeline()
 {
-    auto vertShaderModule = CreateShaderModule(FileUtils::ReadFile("assets/shaders/compiled/TriangleTest.vert.spv"));
-    auto fragShaderModule = CreateShaderModule(FileUtils::ReadFile("assets/shaders/compiled/TriangleTest.frag.spv"));
+    auto vertShaderModule = vk::utils::CreateShaderModule(mDevice, "assets/shaders/compiled/TriangleTest.vert.spv");
+    auto fragShaderModule = vk::utils::CreateShaderModule(mDevice, "assets/shaders/compiled/TriangleTest.frag.spv");
 
     std::array<VkPipelineShaderStageCreateInfo, 2> shaderStageInfos{};
     shaderStageInfos[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -1183,20 +1181,6 @@ VkExtent2D HelloTriangleApp::ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& ca
     };
 }
 
-VkShaderModule HelloTriangleApp::CreateShaderModule(const std::vector<char>& code)
-{
-    VkShaderModuleCreateInfo createInfo{};
-    createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    createInfo.pCode = (const uint32_t*)std::data(code);
-    createInfo.codeSize = std::size(code);
-
-    VkShaderModule shaderModule{};
-    if (const auto result = vkCreateShaderModule(mDevice, &createInfo, nullptr, &shaderModule); result != VK_SUCCESS)
-        throw std::runtime_error("Failed to create shader module");
-
-    return shaderModule;
-}
-
 VkDebugUtilsMessengerCreateInfoEXT HelloTriangleApp::CreateDebugMessengerCreateInfo() const
 {
     VkDebugUtilsMessengerCreateInfoEXT createInfo{};
@@ -1513,28 +1497,6 @@ VkFormat HelloTriangleApp::FindDepthFormat() const
 bool HelloTriangleApp::HasStencilComponent(VkFormat format) const
 {
     return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
-}
-
-VkSampleCountFlagBits HelloTriangleApp::GetMaxUsableSampleCount() const
-{
-    VkPhysicalDeviceProperties props{};
-    vkGetPhysicalDeviceProperties(mPhysicalDevice, &props);
-
-    const VkSampleCountFlags counts = (props.limits.framebufferColorSampleCounts & props.limits.framebufferDepthSampleCounts);
-    if (counts & VK_SAMPLE_COUNT_64_BIT)
-        return VK_SAMPLE_COUNT_64_BIT;
-    if (counts & VK_SAMPLE_COUNT_32_BIT)
-        return VK_SAMPLE_COUNT_32_BIT;
-    if (counts & VK_SAMPLE_COUNT_16_BIT)
-        return VK_SAMPLE_COUNT_16_BIT;
-    if (counts & VK_SAMPLE_COUNT_8_BIT)
-        return VK_SAMPLE_COUNT_8_BIT;
-    if (counts & VK_SAMPLE_COUNT_4_BIT)
-        return VK_SAMPLE_COUNT_4_BIT;
-    if (counts & VK_SAMPLE_COUNT_2_BIT)
-        return VK_SAMPLE_COUNT_2_BIT;
-
-    return VK_SAMPLE_COUNT_1_BIT;
 }
 
 void HelloTriangleApp::FramebufferResizeCallback(GLFWwindow* window, int width, int height)
