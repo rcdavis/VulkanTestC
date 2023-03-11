@@ -20,10 +20,12 @@ std::unique_ptr<Mesh> Mesh::Load(const std::filesystem::path& filepath)
     }
 
     auto loadedMesh = std::make_unique<Mesh>();
+    //loadedMesh->mName = scene->mName.C_Str();
 
     for (uint32_t i = 0; i < scene->mNumMeshes; ++i)
     {
         const aiMesh* const mesh = scene->mMeshes[i];
+        loadedMesh->mName = mesh->mName.C_Str();
         for (uint32_t meshI = 0; meshI < mesh->mNumVertices; ++meshI)
         {
             const aiVector3D pos = mesh->mVertices[meshI];
@@ -53,6 +55,19 @@ std::unique_ptr<Mesh> Mesh::Load(const std::filesystem::path& filepath)
             const aiFace& face = mesh->mFaces[index];
             for (uint32_t faceI = 0; faceI < face.mNumIndices; ++faceI)
                 loadedMesh->mIndices.push_back(face.mIndices[faceI]);
+        }
+    }
+
+    for (size_t i = 0; i < scene->mNumMaterials; ++i)
+    {
+        const aiMaterial* const material = scene->mMaterials[i];
+        if (material->GetTextureCount(aiTextureType_DIFFUSE) > 0)
+        {
+            aiString path;
+            if (material->GetTexture(aiTextureType_DIFFUSE, 0, &path) == aiReturn_SUCCESS)
+            {
+                loadedMesh->mDiffuseTextureName = "assets/textures/" + std::filesystem::path(path.C_Str()).filename().string();
+            }
         }
     }
 

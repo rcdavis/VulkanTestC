@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <vector>
 #include <array>
+#include <memory>
 
 #include <vulkan/vulkan.h>
 
@@ -11,6 +12,7 @@
 #include "Vulkan/VulkanImage.h"
 
 struct GLFWwindow;
+class Mesh;
 
 class HelloTriangleApp
 {
@@ -131,9 +133,6 @@ private:
     std::vector<VkSemaphore> mRenderFinishedSemaphores;
     std::vector<VkFence> mInFlightFences;
 
-    std::vector<Vertex> vertices;
-    std::vector<uint16_t> indices;
-
     VkBuffer mVertexBuffer{};
     VkDeviceMemory mVertexBufferMem{};
 
@@ -157,6 +156,8 @@ private:
 
     VkDebugUtilsMessengerEXT mDebugMessenger{};
 
+    std::unique_ptr<Mesh> mModel;
+
     VkSampleCountFlagBits mMsaaSamples = VK_SAMPLE_COUNT_1_BIT;
 
     uint32_t mCurrentFrame = 0;
@@ -165,9 +166,6 @@ private:
 
     static constexpr uint32_t WindowWidth = 800;
     static constexpr uint32_t WindowHeight = 600;
-
-    static constexpr const char* MeshName = "assets/meshes/VikingRoom.obj";
-    static constexpr const char* TextureName = "assets/textures/VikingRoom.png";
 
     static constexpr std::array<const char*, 1> deviceExtensions = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME

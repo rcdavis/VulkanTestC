@@ -16,10 +16,14 @@ public:
     const std::vector<Vertex>& GetVertices() const { return mVertices; }
     const std::vector<uint16_t>& GetIndices() const { return mIndices; }
 
+    const std::string& GetDiffuseTextureName() const { return mDiffuseTextureName; }
+
     static std::unique_ptr<Mesh> Load(const std::filesystem::path& filepath);
 
 private:
     std::string mName;
     std::vector<Vertex> mVertices;
     std::vector<uint16_t> mIndices;
+
+    std::string mDiffuseTextureName;
 };
