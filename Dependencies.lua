@@ -6,7 +6,6 @@ IncludeDir["Spdlog"] = "%{wks.location}/Vendor/Spdlog/src"
 IncludeDir["glfw"] = "%{wks.location}/Vendor/glfw/src"
 IncludeDir["glm"] = "%{wks.location}/Vendor/glm/src"
 IncludeDir["stb"] = "%{wks.location}/Vendor/stb/src"
-IncludeDir["TinyObjLoader"] = "%{wks.location}/Vendor/TinyObjLoader/src"
 IncludeDir["assimp"] = "%{wks.location}/Vendor/assimp/src"
 IncludeDir["Vulkan"] = "%{VULKAN_SDK}/Include"
 

@@ -3,67 +3,55 @@
 #include "Vertex.h"
 #include "Log.h"
 
-#include <tiny_obj_loader.h>
+#include <assimp/Importer.hpp>
+#include <assimp/postprocess.h>
+#include <assimp/scene.h>
 
 std::unique_ptr<Mesh> Mesh::Load(const std::filesystem::path& filepath)
 {
-    auto loadedMesh = std::make_unique<Mesh>();
+    constexpr uint32_t flags = aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_FlipUVs | aiProcess_JoinIdenticalVertices;
 
-    tinyobj::ObjReader reader;
-    if (!reader.ParseFromFile(filepath.string()))
+    Assimp::Importer importer;
+    const aiScene* const scene = importer.ReadFile(filepath.string(), flags);
+    if (!scene)
     {
-        if (!reader.Error().empty())
-        {
-            LOG_ERROR("TinyObjReader error loading {0}: {1}", filepath.string(), reader.Error());
-            return {};
-        }
+        LOG_ERROR("Failed to load mesh {0}: {1}", filepath.string(), importer.GetErrorString());
+        return {};
     }
 
-    if (!reader.Warning().empty())
-        LOG_WARN("TinyObj: {0}", reader.Warning());
+    auto loadedMesh = std::make_unique<Mesh>();
 
-    const auto& attrib = reader.GetAttrib();
-    const auto& shapes = reader.GetShapes();
-    const auto& materials = reader.GetMaterials();
-
-    std::unordered_map<Vertex, uint32_t> uniqueVerts;
-
-    for (const auto& shape : shapes)
+    for (uint32_t i = 0; i < scene->mNumMeshes; ++i)
     {
-        for (const auto& index : shape.mesh.indices)
+        const aiMesh* const mesh = scene->mMeshes[i];
+        for (uint32_t meshI = 0; meshI < mesh->mNumVertices; ++meshI)
         {
+            const aiVector3D pos = mesh->mVertices[meshI];
+
+            aiVector3D normal(0.0f, 0.0f, 0.0f);
+            if (mesh->HasNormals())
+                normal = mesh->mNormals[meshI];
+
+            aiColor4D color(1.0f, 1.0f, 1.0f, 1.0f);
+            if (mesh->HasVertexColors(0))
+                color = mesh->mColors[0][meshI];
+
+            aiVector3D texCoord(0.0f, 0.0f, 0.0f);
+            if (mesh->HasTextureCoords(0))
+                texCoord = mesh->mTextureCoords[0][meshI];
+
             Vertex vert;
+            vert.pos = { pos.x, pos.y, pos.z };
+            vert.color = { color.r, color.g, color.b };
+            vert.texCoord = { texCoord.x, texCoord.y };
+            loadedMesh->mVertices.push_back(vert);
+        }
 
-            vert.pos = {
-                attrib.vertices[3 * index.vertex_index + 0],
-                attrib.vertices[3 * index.vertex_index + 1],
-                attrib.vertices[3 * index.vertex_index + 2]
-            };
-
-            if (!std::empty(attrib.colors))
-            {
-                vert.color = {
-                    attrib.colors[3 * index.vertex_index + 0],
-                    attrib.colors[3 * index.vertex_index + 1],
-                    attrib.colors[3 * index.vertex_index + 2]
-                };
-            }
-
-            if (index.texcoord_index >= 0)
-            {
-                vert.texCoord = {
-                    attrib.texcoords[2 * index.texcoord_index + 0],
-                    1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
-                };
-            }
-
-            if (uniqueVerts.count(vert) == 0)
-            {
-                uniqueVerts[vert] = (uint32_t)std::size(loadedMesh->mVertices);
-                loadedMesh->mVertices.push_back(vert);
-            }
-
-            loadedMesh->mIndices.push_back(uniqueVerts[vert]);
+        for (uint32_t index = 0; index < mesh->mNumFaces; ++index)
+        {
+            const aiFace& face = mesh->mFaces[index];
+            for (uint32_t faceI = 0; faceI < face.mNumIndices; ++faceI)
+                loadedMesh->mIndices.push_back(face.mIndices[faceI]);
         }
     }
 
