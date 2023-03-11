@@ -42,6 +42,7 @@ std::unique_ptr<Mesh> Mesh::Load(const std::filesystem::path& filepath)
 
             Vertex vert;
             vert.pos = { pos.x, pos.y, pos.z };
+            vert.normal = { normal.x, normal.y, normal.z };
             vert.color = { color.r, color.g, color.b };
             vert.texCoord = { texCoord.x, texCoord.y };
             loadedMesh->mVertices.push_back(vert);

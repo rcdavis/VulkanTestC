@@ -11,16 +11,18 @@
 struct Vertex
 {
     glm::vec3 pos{ 0.0f };
+    glm::vec3 normal{ 0.0f };
     glm::vec3 color{ 1.0f };
     glm::vec2 texCoord{ 0.0f };
 
     bool operator==(const Vertex& other) const {
-        return pos == other.pos && color == other.color && texCoord == other.texCoord;
+        return pos == other.pos && normal == other.normal
+            && color == other.color && texCoord == other.texCoord;
     }
 
     static std::array<VkVertexInputBindingDescription, 1> GetBindingDescriptions();
 
-    static std::array<VkVertexInputAttributeDescription, 3> GetAttributeDescriptions();
+    static std::array<VkVertexInputAttributeDescription, 4> GetAttributeDescriptions();
 };
 
 namespace std
