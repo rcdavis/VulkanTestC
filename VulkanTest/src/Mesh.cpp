@@ -1,59 +1,41 @@
 #include "Mesh.h"
 
-#include "Vertex.h"
-#include "Log.h"
+#include <assimp/mesh.h>
 
-#include <assimp/Importer.hpp>
-#include <assimp/postprocess.h>
-#include <assimp/scene.h>
-
-std::unique_ptr<Mesh> Mesh::Load(const std::filesystem::path& filepath)
+std::unique_ptr<Mesh> Mesh::Load(const aiMesh* const mesh)
 {
-    constexpr uint32_t flags = aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_FlipUVs | aiProcess_JoinIdenticalVertices;
+    auto loadedMesh = std::make_unique<Mesh>();
+    loadedMesh->mName = mesh->mName.C_Str();
 
-    Assimp::Importer importer;
-    const aiScene* const scene = importer.ReadFile(filepath.string(), flags);
-    if (!scene)
+    for (uint32_t i = 0; i < mesh->mNumVertices; ++i)
     {
-        LOG_ERROR("Failed to load mesh {0}: {1}", filepath.string(), importer.GetErrorString());
-        return {};
+        const aiVector3D pos = mesh->mVertices[i];
+
+        aiVector3D normal(0.0f, 0.0f, 0.0f);
+        if (mesh->HasNormals())
+            normal = mesh->mNormals[i];
+
+        aiColor4D color(1.0f, 1.0f, 1.0f, 1.0f);
+        if (mesh->HasVertexColors(0))
+            color = mesh->mColors[0][i];
+
+        aiVector3D texCoord(0.0f, 0.0f, 0.0f);
+        if (mesh->HasTextureCoords(0))
+            texCoord = mesh->mTextureCoords[0][i];
+
+        Vertex vert;
+        vert.pos = { pos.x, pos.y, pos.z };
+        vert.normal = { normal.x, normal.y, normal.z };
+        vert.color = { color.r, color.g, color.b };
+        vert.texCoord = { texCoord.x, texCoord.y };
+        loadedMesh->mVertices.push_back(vert);
     }
 
-    auto loadedMesh = std::make_unique<Mesh>();
-
-    for (uint32_t i = 0; i < scene->mNumMeshes; ++i)
+    for (uint32_t i = 0; i < mesh->mNumFaces; ++i)
     {
-        const aiMesh* const mesh = scene->mMeshes[i];
-        for (uint32_t meshI = 0; meshI < mesh->mNumVertices; ++meshI)
-        {
-            const aiVector3D pos = mesh->mVertices[meshI];
-
-            aiVector3D normal(0.0f, 0.0f, 0.0f);
-            if (mesh->HasNormals())
-                normal = mesh->mNormals[meshI];
-
-            aiColor4D color(1.0f, 1.0f, 1.0f, 1.0f);
-            if (mesh->HasVertexColors(0))
-                color = mesh->mColors[0][meshI];
-
-            aiVector3D texCoord(0.0f, 0.0f, 0.0f);
-            if (mesh->HasTextureCoords(0))
-                texCoord = mesh->mTextureCoords[0][meshI];
-
-            Vertex vert;
-            vert.pos = { pos.x, pos.y, pos.z };
-            vert.normal = { normal.x, normal.y, normal.z };
-            vert.color = { color.r, color.g, color.b };
-            vert.texCoord = { texCoord.x, texCoord.y };
-            loadedMesh->mVertices.push_back(vert);
-        }
-
-        for (uint32_t index = 0; index < mesh->mNumFaces; ++index)
-        {
-            const aiFace& face = mesh->mFaces[index];
-            for (uint32_t faceI = 0; faceI < face.mNumIndices; ++faceI)
-                loadedMesh->mIndices.push_back(face.mIndices[faceI]);
-        }
+        const aiFace& face = mesh->mFaces[i];
+        for (uint32_t faceI = 0; faceI < face.mNumIndices; ++faceI)
+            loadedMesh->mIndices.push_back(face.mIndices[faceI]);
     }
 
     return loadedMesh;

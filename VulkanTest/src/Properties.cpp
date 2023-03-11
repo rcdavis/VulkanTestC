@@ -10,6 +10,9 @@ Properties Properties::ReadFile(const std::filesystem::path& filepath)
     Properties props;
     for (const auto& line : lines)
     {
+        if (std::empty(line))
+            continue;
+
         const auto firstIndex = line.find_first_of("=");
         if (firstIndex == std::string::npos)
         {

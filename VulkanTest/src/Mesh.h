@@ -1,11 +1,12 @@
 #pragma once
 
-#include <filesystem>
 #include <vector>
 #include <string>
 #include <memory>
 
-struct Vertex;
+#include "Vertex.h"
+
+struct aiMesh;
 
 class Mesh
 {
@@ -16,10 +17,14 @@ public:
     const std::vector<Vertex>& GetVertices() const { return mVertices; }
     const std::vector<uint16_t>& GetIndices() const { return mIndices; }
 
-    static std::unique_ptr<Mesh> Load(const std::filesystem::path& filepath);
+    const std::string& GetDiffuseTextureName() const { return mDiffuseTextureName; }
+
+    static std::unique_ptr<Mesh> Load(const aiMesh* const mesh);
 
 private:
     std::string mName;
     std::vector<Vertex> mVertices;
     std::vector<uint16_t> mIndices;
+
+    std::string mDiffuseTextureName;
 };
