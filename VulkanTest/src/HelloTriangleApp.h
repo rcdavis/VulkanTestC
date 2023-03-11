@@ -94,6 +94,8 @@ private:
     VkFormat FindDepthFormat() const;
     bool HasStencilComponent(VkFormat format) const;
 
+    bool LoadGLTFModel();
+
     static void FramebufferResizeCallback(GLFWwindow* window, int width, int height);
 
 private:

@@ -10,7 +10,8 @@ project "VulkanTest"
     postbuildcommands {
         "{MKDIR} %{ShadersDir}/compiled",
         "%{GLSLC} %{ShadersDir}/TriangleTest.vert -o %{ShadersDir}/compiled/TriangleTest.vert.spv",
-        "%{GLSLC} %{ShadersDir}/TriangleTest.frag -o %{ShadersDir}/compiled/TriangleTest.frag.spv"
+        "%{GLSLC} %{ShadersDir}/TriangleTest.frag -o %{ShadersDir}/compiled/TriangleTest.frag.spv",
+        "{COPY} %{Library.assimp_dll} %{outputTargetDir}"
     }
 
     cleancommands {
@@ -26,13 +27,15 @@ project "VulkanTest"
         "src",
         "%{IncludeDir.glfw}",
         "%{IncludeDir.glm}",
-        "%{IncludeDir.stb_image}",
+        "%{IncludeDir.stb}",
         "%{IncludeDir.Spdlog}",
         "%{IncludeDir.TinyObjLoader}",
+        "%{IncludeDir.assimp}",
         "%{IncludeDir.Vulkan}"
     }
 
     links {
         "%{Library.Vulkan}",
+        "%{Library.assimp}",
         "%{Library.glfw}"
     }

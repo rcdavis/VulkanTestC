@@ -8,12 +8,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-#define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
-
-#define TINYOBJLOADER_IMPLEMENTATION
-#define TINYOBJLOADER_USE_MAPBOX_EARCUT
-#include <tiny_obj_loader.h>
 
 #include <chrono>
 
@@ -29,6 +24,7 @@
 #include "SwapChainSupportDetails.h"
 #include "FileUtils.h"
 #include "UniformBufferObject.h"
+#include "Mesh.h"
 
 HelloTriangleApp::~HelloTriangleApp()
 {
@@ -623,11 +619,13 @@ void HelloTriangleApp::CreateTextureImage()
     int texWidth = 0;
     int texHeight = 0;
     int texChannels = 0;
-    stbi_uc* pixels = stbi_load(TextureName, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-    const VkDeviceSize imageSize = (VkDeviceSize)texWidth * texHeight * 4;
+    const auto deleter = [&](stbi_uc* ptr) { stbi_image_free(ptr); };
+    std::unique_ptr<stbi_uc, decltype(deleter)> pixels(stbi_load(TextureName, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha), deleter);
 
     if (!pixels)
         throw std::runtime_error("Failed to load texture image");
+
+    const VkDeviceSize imageSize = VkDeviceSize(texWidth * texHeight * 4);
 
     mMipLevels = (uint32_t)std::floor(std::log2(std::max(texWidth, texHeight))) + 1;
 
@@ -637,10 +635,10 @@ void HelloTriangleApp::CreateTextureImage()
 
     void* data = nullptr;
     vkMapMemory(mDevice, stagingBufferMem, 0, imageSize, 0, &data);
-    memcpy(data, pixels, (size_t)imageSize);
+    memcpy(data, pixels.get(), (size_t)imageSize);
     vkUnmapMemory(mDevice, stagingBufferMem);
 
-    stbi_image_free(pixels);
+    pixels = nullptr;
 
     constexpr VkImageUsageFlags imageUsage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
     CreateImage(texWidth, texHeight, mMipLevels, VK_SAMPLE_COUNT_1_BIT, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
@@ -689,68 +687,15 @@ void HelloTriangleApp::CreateTextureSampler()
 
 void HelloTriangleApp::LoadModel()
 {
-    tinyobj::ObjReader reader;
-    if (!reader.ParseFromFile(MeshName))
-    {
-        if (!reader.Error().empty())
-        {
-            LOG_ERROR("TinyObjReader error loading {0}: {1}", MeshName, reader.Error());
-            return;
-        }
-    }
+    auto model = Mesh::Load(MeshName);
 
-    if (!reader.Warning().empty())
-        LOG_WARN("TinyObj: {0}", reader.Warning());
-
-    const auto& attrib = reader.GetAttrib();
-    const auto& shapes = reader.GetShapes();
-    const auto& materials = reader.GetMaterials();
-
-    std::unordered_map<Vertex, uint32_t> uniqueVerts;
-
-    for (const auto& shape : shapes)
-    {
-        for (const auto& index : shape.mesh.indices)
-        {
-            Vertex vert;
-
-            vert.pos = {
-                attrib.vertices[3 * index.vertex_index + 0],
-                attrib.vertices[3 * index.vertex_index + 1],
-                attrib.vertices[3 * index.vertex_index + 2]
-            };
-
-            if (!std::empty(attrib.colors))
-            {
-                vert.color = {
-                    attrib.colors[3 * index.vertex_index + 0],
-                    attrib.colors[3 * index.vertex_index + 1],
-                    attrib.colors[3 * index.vertex_index + 2]
-                };
-            }
-
-            if (index.texcoord_index >= 0)
-            {
-                vert.texCoord = {
-                    attrib.texcoords[2 * index.texcoord_index + 0],
-                    1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
-                };
-            }
-
-            if (uniqueVerts.count(vert) == 0)
-            {
-                uniqueVerts[vert] = (uint32_t)std::size(vertices);
-                vertices.push_back(vert);
-            }
-
-            indices.push_back(uniqueVerts[vert]);
-        }
-    }
+    vertices = model->GetVertices();
+    indices = model->GetIndices();
 }
 
 void HelloTriangleApp::CreateVertexBuffer()
 {
-    VkDeviceSize bufferSize = VkDeviceSize(sizeof(Vertex) * std::size(vertices));
+    const VkDeviceSize bufferSize = VkDeviceSize(sizeof(Vertex) * std::size(vertices));
     constexpr VkMemoryPropertyFlags stagingProps = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
     VkBuffer stagingBuffer{};
@@ -773,7 +718,7 @@ void HelloTriangleApp::CreateVertexBuffer()
 
 void HelloTriangleApp::CreateIndexBuffer()
 {
-    VkDeviceSize bufferSize = VkDeviceSize(sizeof(uint16_t) * std::size(indices));
+    const VkDeviceSize bufferSize = VkDeviceSize(sizeof(uint16_t) * std::size(indices));
     constexpr VkMemoryPropertyFlags stagingProps = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
     VkBuffer stagingBuffer{};
