@@ -24,7 +24,6 @@
 #include "SwapChainSupportDetails.h"
 #include "FileUtils.h"
 #include "UniformBufferObject.h"
-#include "Mesh.h"
 
 HelloTriangleApp::~HelloTriangleApp()
 {
@@ -688,12 +687,12 @@ void HelloTriangleApp::CreateTextureSampler()
 
 void HelloTriangleApp::LoadModel()
 {
-    mModel = Mesh::Load("assets/meshes/VikingRoom.fbx");
+    mModel = Model::Load("assets/meshes/VikingRoom.fbx");
 }
 
 void HelloTriangleApp::CreateVertexBuffer()
 {
-    const VkDeviceSize bufferSize = VkDeviceSize(sizeof(Vertex) * std::size(mModel->GetVertices()));
+    const VkDeviceSize bufferSize = VkDeviceSize(sizeof(Vertex) * std::size(mModel->GetMeshes()[0]->GetVertices()));
     constexpr VkMemoryPropertyFlags stagingProps = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
     VkBuffer stagingBuffer{};
@@ -702,7 +701,7 @@ void HelloTriangleApp::CreateVertexBuffer()
 
     void* data = nullptr;
     vkMapMemory(mDevice, stagingBufferMem, 0, bufferSize, 0, &data);
-    memcpy(data, std::data(mModel->GetVertices()), (size_t)bufferSize);
+    memcpy(data, std::data(mModel->GetMeshes()[0]->GetVertices()), (size_t)bufferSize);
     vkUnmapMemory(mDevice, stagingBufferMem);
 
     constexpr VkBufferUsageFlags vertUsage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
@@ -716,7 +715,7 @@ void HelloTriangleApp::CreateVertexBuffer()
 
 void HelloTriangleApp::CreateIndexBuffer()
 {
-    const VkDeviceSize bufferSize = VkDeviceSize(sizeof(uint16_t) * std::size(mModel->GetIndices()));
+    const VkDeviceSize bufferSize = VkDeviceSize(sizeof(uint16_t) * std::size(mModel->GetMeshes()[0]->GetIndices()));
     constexpr VkMemoryPropertyFlags stagingProps = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
     VkBuffer stagingBuffer{};
@@ -725,7 +724,7 @@ void HelloTriangleApp::CreateIndexBuffer()
 
     void* data = nullptr;
     vkMapMemory(mDevice, stagingBufferMem, 0, bufferSize, 0, &data);
-    memcpy(data, std::data(mModel->GetIndices()), (size_t)bufferSize);
+    memcpy(data, std::data(mModel->GetMeshes()[0]->GetIndices()), (size_t)bufferSize);
     vkUnmapMemory(mDevice, stagingBufferMem);
 
     constexpr VkBufferUsageFlags indexUsage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
@@ -901,7 +900,7 @@ void HelloTriangleApp::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32
     scissor.extent = mSwapChainExtent;
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-    vkCmdDrawIndexed(commandBuffer, (uint32_t)std::size(mModel->GetIndices()), 1, 0, 0, 0);
+    vkCmdDrawIndexed(commandBuffer, (uint32_t)std::size(mModel->GetMeshes()[0]->GetIndices()), 1, 0, 0, 0);
 
     vkCmdEndRenderPass(commandBuffer);
 

@@ -8,11 +8,11 @@
 #include <vulkan/vulkan.h>
 
 #include "Vertex.h"
+#include "Model.h"
 
 #include "Vulkan/VulkanImage.h"
 
 struct GLFWwindow;
-class Mesh;
 
 class HelloTriangleApp
 {
@@ -96,8 +96,6 @@ private:
     VkFormat FindDepthFormat() const;
     bool HasStencilComponent(VkFormat format) const;
 
-    bool LoadGLTFModel();
-
     static void FramebufferResizeCallback(GLFWwindow* window, int width, int height);
 
 private:
@@ -156,7 +154,7 @@ private:
 
     VkDebugUtilsMessengerEXT mDebugMessenger{};
 
-    std::unique_ptr<Mesh> mModel;
+    std::unique_ptr<Model> mModel;
 
     VkSampleCountFlagBits mMsaaSamples = VK_SAMPLE_COUNT_1_BIT;
 

@@ -1,7 +1,6 @@
 
 #include "HelloTriangleApp.h"
 #include "Log.h"
-#include "Mesh.h"
 
 int main()
 {
