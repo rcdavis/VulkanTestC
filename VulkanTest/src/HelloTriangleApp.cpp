@@ -24,6 +24,7 @@
 #include "SwapChainSupportDetails.h"
 #include "FileUtils.h"
 #include "UniformBufferObject.h"
+#include "Properties.h"
 
 HelloTriangleApp::~HelloTriangleApp()
 {
@@ -37,13 +38,20 @@ void HelloTriangleApp::InitWindow()
         throw std::runtime_error("Failed to init GLFW");
     }
 
+    Properties props = Properties::ReadFile("assets/App.properties");
+    const auto width = props.GetUInt32("windowWidth").value_or(WindowWidth);
+    const auto height = props.GetUInt32("windowHeight").value_or(WindowHeight);
+    const auto title = props.GetString("windowTitle").value_or("Vulkan Test");
+
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
-    mWindow = glfwCreateWindow(WindowWidth, WindowHeight, "Vulkan Test", nullptr, nullptr);
+    mWindow = glfwCreateWindow(width, height, std::data(title), nullptr, nullptr);
     if (!mWindow)
         throw std::runtime_error("Failed to create GLFW window");
     glfwSetWindowUserPointer(mWindow, this);
     glfwSetFramebufferSizeCallback(mWindow, FramebufferResizeCallback);
+
+    mModel = Model::Load(props.GetString("modelFile").value_or("assets/meshes/VikingRoom.fbx"));
 }
 
 void HelloTriangleApp::InitVulkan()
@@ -62,7 +70,6 @@ void HelloTriangleApp::InitVulkan()
     CreateColorResources();
     CreateDepthResources();
     CreateFramebuffers();
-    LoadModel();
     CreateTextureImage();
     CreateTextureImageView();
     CreateTextureSampler();
@@ -683,11 +690,6 @@ void HelloTriangleApp::CreateTextureSampler()
 
     if (vkCreateSampler(mDevice, &samplerInfo, nullptr, &mTexSampler) != VK_SUCCESS)
         throw std::runtime_error("Failed to create texture sampler");
-}
-
-void HelloTriangleApp::LoadModel()
-{
-    mModel = Model::Load("assets/meshes/VikingRoom.fbx");
 }
 
 void HelloTriangleApp::CreateVertexBuffer()
